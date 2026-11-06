@@ -1,12 +1,12 @@
 /**
- * Modern Error Banner Component
+ * Modern Error Banner Component — FraudShield Cyber Edition
  *
  * Polished alert banner with Lucide AlertCircle icon, optional retry/dismiss actions.
  */
 
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
-import {Colors, Typography, Spacing} from '../theme/theme';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Colors, Typography, Spacing } from '../theme/theme';
 import Icon from './Icon';
 
 interface ErrorMessageProps {
@@ -35,10 +35,10 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
           <TouchableOpacity
             onPress={onDismiss}
             style={styles.dismissButton}
-            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
             accessibilityLabel="Dismiss error">
-            <Icon name="X" size={16} color={Colors.errorDark} />
+            <Icon name="X" size={16} color="#F87171" />
           </TouchableOpacity>
         )}
       </View>
@@ -59,27 +59,28 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.errorLight,
-    borderRadius: Spacing.borderRadius.md,
-    padding: Spacing.md + 2,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderRadius: 12,
+    padding: 14,
     marginBottom: Spacing.lg,
     borderWidth: 1,
-    borderColor: Colors.errorBorder,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   iconContainer: {
-    marginRight: Spacing.sm + 2,
+    marginRight: 10,
     marginTop: 1,
   },
   message: {
     ...Typography.styles.caption,
-    color: Colors.errorDark,
-    fontWeight: Typography.weights.medium,
+    color: '#FCA5A5',
+    fontWeight: '500',
     flex: 1,
     lineHeight: 19,
+    fontSize: 13,
   },
   dismissButton: {
     marginLeft: Spacing.sm,
@@ -92,17 +93,17 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xs,
   },
   retryButton: {
-    backgroundColor: Colors.white,
+    backgroundColor: '#1B1B24',
     paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Spacing.borderRadius.sm,
+    paddingHorizontal: 14,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.errorBorder,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
   },
   retryText: {
-    ...Typography.styles.small,
-    fontWeight: Typography.weights.semibold,
-    color: Colors.error,
+    ...Typography.styles.caption,
+    color: '#F87171',
+    fontWeight: '600',
   },
 });
 

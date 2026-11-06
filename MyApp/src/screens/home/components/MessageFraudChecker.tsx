@@ -1,19 +1,21 @@
 /**
- * Message Fraud Checker Component — FraudShield
+ * AI Message Scanner Component — FraudShield Cyber Edition
  *
- * Dedicated section for checking suspicious messages via:
- * 1. Typing / Pasting text directly
- * 2. Uploading a screenshot with on-device OCR extraction & editable review
- *
- * Follows FraudShield design principles:
- * - Minimal, clean, and professional hierarchy
- * - Dominant #3a86ff primary actions
- * - Lucide icons throughout
- * - Multi-stage pipeline: Input -> OCR -> Review -> Analysis -> Result
- * - Accessible, high-contrast, large touch targets
+ * Dedicated interface for checking suspicious messages & screenshot OCR:
+ * 1. Direct Text / SMS typing & Paste action
+ * 2. On-device Screenshot OCR extraction with review & edit
+ * 3. Real-time AI analysis with radar scan animation
+ * 4. Premium Result Card:
+ *    - Green for Safe (#22C55E)
+ *    - Orange for Suspicious (#F59E0B)
+ *    - Red for Potential Fraud (#EF4444)
+ *    - Confidence / Risk percentage meter
+ *    - AI-generated reasoning breakdown & warning chips
+ *    - Direct AI Assistant explanation link
+ *    - Scan Again reset action
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,27 +24,29 @@ import {
   Image,
   ActivityIndicator,
   StyleSheet,
-  Platform,
   Alert,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from '../../../components/Icon';
+import Badge from '../../../components/Badge';
 import { Colors, Typography, Spacing, Shadows } from '../../../theme/theme';
 import { pickScreenshot, extractTextFromScreenshot } from '../../../services/ocrService';
-import { checkMessageForFraud, MessageCheckResult } from '../../../fraudDetection/messageCheckerHandler';
-
-const PRIMARY_COLOR = '#3a86ff';
+import {
+  checkMessageForFraud,
+  MessageCheckResult,
+} from '../../../fraudDetection/messageCheckerHandler';
 
 type CheckerStep =
-  | 'INPUT'        // Normal typing / empty state
-  | 'OCR_READING'  // OCR is actively processing the screenshot
-  | 'OCR_REVIEW'   // OCR completed, user reviews / edits extracted text
-  | 'ANALYZING'    // Fraud detection pipeline running
+  | 'INPUT'        // Direct typing & upload choice
+  | 'OCR_READING'  // OCR in progress
+  | 'OCR_REVIEW'   // OCR completed, user reviewing text
+  | 'ANALYZING'    // AI analysis running
   | 'RESULT';      // Result card displayed
 
 interface MessageFraudCheckerProps {
   onScanComplete?: (result: MessageCheckResult) => void;
-  initialMode?: 'paste' | 'upload';
+  initialMode?: 'paste' | 'upload' | 'url';
 }
 
 export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
@@ -50,22 +54,32 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
   initialMode,
 }) => {
   const navigation = useNavigation<any>();
-  // Input & state
+
+  // State
   const [inputText, setInputText] = useState('');
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [step, setStep] = useState<CheckerStep>('INPUT');
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [activeTab, setActiveTab] = useState<'text' | 'image'>('text');
 
   // Analysis result & error
   const [checkResult, setCheckResult] = useState<MessageCheckResult | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
 
-  const textInputRef = useRef<TextInput>(null);
+  const textInputRef = useRef<any>(null);
 
-  React.useEffect(() => {
+  // Pulse animation for radar scanning state
+  
+
+  useEffect(() => {
     if (initialMode === 'upload') {
+      setActiveTab('image');
       handlePickScreenshot();
     } else if (initialMode === 'paste') {
+      setActiveTab('text');
+      setTimeout(() => textInputRef.current?.focus(), 300);
+    } else if (initialMode === 'url') {
+      setActiveTab('text');
       setTimeout(() => textInputRef.current?.focus(), 300);
     }
   }, [initialMode]);
@@ -77,7 +91,6 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
       setOcrError(null);
       const picked = await pickScreenshot();
       if (!picked || !picked.uri) {
-        // User cancelled picker
         return;
       }
 
@@ -170,6 +183,17 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
     setStep('INPUT');
   };
 
+  const handlePasteHelper = () => {
+    // If input is empty, load a sample or focus
+    if (!inputText) {
+      setInputText(
+        'URGENT: Your State Bank account is temporarily locked due to failed KYC. Click http://sbi-kyc-update.xyz/verify immediately to avoid suspension. Do not share your OTP.',
+      );
+    } else {
+      textInputRef.current?.focus();
+    }
+  };
+
   const handleLoadSample = (type: 'scam' | 'safe') => {
     if (type === 'scam') {
       setInputText(
@@ -186,15 +210,19 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
   const handleExplainDetection = () => {
     if (!checkResult) return;
     const isThreat = checkResult.riskScore >= 0.70;
+    const isSuspicious = !isThreat && checkResult.riskScore >= 0.40;
+
     navigation.navigate('AssistantChat', {
       mode: 'detection_explanation',
       detectionContext: {
         detectionId: `scan_${Date.now()}`,
         source: selectedImageUri ? 'OCR' : 'MANUAL_CHECK',
-        classification: isThreat ? 'FRAUD' : (checkResult.riskScore >= 0.40 ? 'SUSPICIOUS' : 'LEGITIMATE'),
+        classification: isThreat ? 'FRAUD' : isSuspicious ? 'SUSPICIOUS' : 'LEGITIMATE',
         riskScore: checkResult.riskScore,
         reasons: checkResult.reasons || [],
-        safePreview: checkResult.analyzedText ? checkResult.analyzedText.substring(0, 80) : '',
+        safePreview: checkResult.analyzedText
+          ? checkResult.analyzedText.substring(0, 80)
+          : '',
       },
       initialPrompt: isThreat
         ? 'Why was this message flagged as a threat and what signs indicate fraud?'
@@ -202,26 +230,78 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
     });
   };
 
-  const canCheck = inputText.trim().length >= 5 && step !== 'ANALYZING' && step !== 'OCR_READING';
-
-  // ─── RENDER SUBVIEWS ────────────────────────────────────────────────────────
+  const canCheck =
+    inputText.trim().length >= 5 &&
+    step !== 'ANALYZING' &&
+    step !== 'OCR_READING';
 
   return (
     <View style={styles.sectionContainer}>
-      {/* ─── Header Section (Always Visible) ────────────────────────── */}
+      {/* ─── Header Section ────────────────────────────────────────── */}
       <View style={styles.headerRow}>
         <View style={styles.headerIconWrapper}>
-          <Icon name="Shield" size={20} color={PRIMARY_COLOR} strokeWidth={2.4} />
+          <Icon name="Scan" size={22} color={Colors.secondary} strokeWidth={2.4} />
         </View>
         <View style={styles.headerTextGroup}>
-          <Text style={styles.heading}>Check a suspicious message</Text>
+          <View style={styles.titleBadgeRow}>
+            <Text style={styles.heading}>AI Message Scanner</Text>
+            <View style={styles.aiBadge}>
+              <Text style={styles.aiBadgeText}>NLP + URL</Text>
+            </View>
+          </View>
           <Text style={styles.subheading}>
-            Paste a message or upload a screenshot to check for potential fraud.
+            Inspect SMS, WhatsApp texts, OTP phishing & on-screen screenshot OCR.
           </Text>
         </View>
       </View>
 
-      {/* ─── State 1 & 3: INPUT / OCR REVIEW ────────────────────────── */}
+      {/* ─── Mode Selector Tabs ────────────────────────────────────── */}
+      {step === 'INPUT' && (
+        <View style={styles.modeTabsRow}>
+          <TouchableOpacity
+            style={[styles.modeTab, activeTab === 'text' && styles.modeTabActive]}
+            onPress={() => setActiveTab('text')}
+            activeOpacity={0.8}>
+            <Icon
+              name="FileText"
+              size={15}
+              color={activeTab === 'text' ? Colors.secondary : Colors.textTertiary}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.modeTabText,
+                activeTab === 'text' && styles.modeTabTextActive,
+              ]}>
+              Text / SMS
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.modeTab, activeTab === 'image' && styles.modeTabActive]}
+            onPress={() => {
+              setActiveTab('image');
+              if (!selectedImageUri) handlePickScreenshot();
+            }}
+            activeOpacity={0.8}>
+            <Icon
+              name="Image"
+              size={15}
+              color={activeTab === 'image' ? Colors.secondary : Colors.textTertiary}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.modeTabText,
+                activeTab === 'image' && styles.modeTabTextActive,
+              ]}>
+              Screenshot OCR
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ─── Input & Review Body ───────────────────────────────────── */}
       {(step === 'INPUT' || step === 'OCR_REVIEW') && (
         <View style={styles.contentBody}>
           {/* OCR Review Header Banner */}
@@ -229,8 +309,8 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
             <View style={styles.reviewBanner}>
               <View style={styles.reviewBannerHeader}>
                 <View style={styles.reviewBadge}>
-                  <Icon name="FileText" size={14} color="#1E40AF" strokeWidth={2.2} />
-                  <Text style={styles.reviewBadgeText}>Extracted message</Text>
+                  <Icon name="FileText" size={13} color={Colors.secondary} strokeWidth={2.2} />
+                  <Text style={styles.reviewBadgeText}>OCR Extracted Text</Text>
                 </View>
                 <TouchableOpacity
                   onPress={handlePickScreenshot}
@@ -238,17 +318,17 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
                   style={styles.replaceImageBtn}
                   accessibilityRole="button"
                   accessibilityLabel="Replace screenshot">
-                  <Icon name="RefreshCw" size={13} color={PRIMARY_COLOR} strokeWidth={2} />
-                  <Text style={styles.replaceImageText}>Replace image</Text>
+                  <Icon name="RefreshCw" size={13} color={Colors.secondary} strokeWidth={2} />
+                  <Text style={styles.replaceImageText}>Replace Image</Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.reviewTip}>
-                Review or correct any misread numbers, links, or bank names before checking.
+                Review or correct any misread digits, links, or bank names before running AI check.
               </Text>
             </View>
           )}
 
-          {/* Screenshot Preview Card (if an image is selected) */}
+          {/* Screenshot Preview Card */}
           {selectedImageUri && (
             <View style={styles.imagePreviewRow}>
               <Image
@@ -261,9 +341,7 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
                 <Text style={styles.imageTitle} numberOfLines={1}>
                   Screenshot attached
                 </Text>
-                <Text style={styles.imageSubtitle}>
-                  Text extracted via on-device OCR
-                </Text>
+                <Text style={styles.imageSubtitle}>Text extracted via on-device OCR</Text>
               </View>
               <TouchableOpacity
                 onPress={handleRemoveImage}
@@ -271,25 +349,51 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
                 accessibilityRole="button"
                 accessibilityLabel="Remove attached screenshot"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Icon name="Trash2" size={16} color={Colors.textTertiary} strokeWidth={2} />
+                <Icon name="Trash2" size={16} color={Colors.error} strokeWidth={2} />
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Multiline Message Input */}
+          {/* Large Multiline Message Input Box */}
           <View
             style={[
               styles.inputBox,
               isInputFocused && styles.inputBoxFocused,
               Boolean(ocrError) && styles.inputBoxError,
             ]}>
+            {/* Input Header Toolbar */}
+            <View style={styles.inputToolbar}>
+              <Text style={styles.inputToolbarTitle}>MESSAGE CONTENT</Text>
+              <View style={styles.toolbarActions}>
+                <TouchableOpacity
+                  style={styles.toolbarBtn}
+                  onPress={handlePasteHelper}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <Icon name="Sparkles" size={13} color={Colors.secondary} style={{ marginRight: 4 }} />
+                  <Text style={styles.toolbarBtnText}>
+                    {inputText ? 'Edit' : 'Sample / Paste'}
+                  </Text>
+                </TouchableOpacity>
+
+                {inputText.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.toolbarBtn}
+                    onPress={() => setInputText('')}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                    <Icon name="X" size={13} color={Colors.textTertiary} style={{ marginRight: 3 }} />
+                    <Text style={styles.toolbarBtnTextMuted}>Clear</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
             <TextInput
               ref={textInputRef}
               style={styles.textInput}
               multiline
               textAlignVertical="top"
-              placeholder="Paste suspicious message here..."
-              placeholderTextColor="#94A3B8"
+              placeholder="Paste or type suspicious message payload here..."
+              placeholderTextColor={Colors.placeholder}
               value={inputText}
               onChangeText={setInputText}
               onFocus={() => setIsInputFocused(true)}
@@ -298,57 +402,36 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
               autoCorrect={false}
               accessibilityLabel="Suspicious message text input"
             />
-            {/* Subtle Character Count */}
+
+            {/* Input Footer */}
             <View style={styles.inputFooter}>
-              <Text style={styles.charCount}>
-                {inputText.length} characters
-              </Text>
-              {inputText.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setInputText('')}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  accessibilityLabel="Clear message text">
-                  <Text style={styles.clearTextLink}>Clear</Text>
-                </TouchableOpacity>
-              )}
+              <Text style={styles.charCount}>{inputText.length} characters</Text>
+              <Text style={styles.securityHint}>Zero PII retained on-device</Text>
             </View>
           </View>
 
-          {/* Divider & Screenshot Upload Button (only in default input step) */}
-          {step === 'INPUT' && !selectedImageUri && (
-            <>
-              <View style={styles.orDividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
+          {/* Screenshot Upload Card (if in image tab and no image attached) */}
+          {activeTab === 'image' && !selectedImageUri && (
+            <TouchableOpacity
+              style={styles.uploadCard}
+              onPress={handlePickScreenshot}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel="Upload screenshot for OCR">
+              <View style={styles.uploadIconCircle}>
+                <Icon name="Upload" size={20} color={Colors.secondary} strokeWidth={2.2} />
               </View>
-
-              <TouchableOpacity
-                style={styles.uploadCard}
-                onPress={handlePickScreenshot}
-                activeOpacity={0.82}
-                accessibilityRole="button"
-                accessibilityLabel="Upload screenshot for OCR">
-                <View style={styles.uploadIconCircle}>
-                  <Icon name="Image" size={22} color={PRIMARY_COLOR} strokeWidth={2.2} />
-                </View>
-                <View style={styles.uploadTextContainer}>
-                  <Text style={styles.uploadTitle}>Upload Screenshot</Text>
-                  <Text style={styles.uploadSubtitle}>
-                    We'll extract the text automatically using OCR.
-                  </Text>
-                </View>
-                <Icon
-                  name="ChevronRight"
-                  size={18}
-                  color={Colors.textTertiary}
-                  strokeWidth={2}
-                />
-              </TouchableOpacity>
-            </>
+              <View style={styles.uploadTextContainer}>
+                <Text style={styles.uploadTitle}>Choose Screenshot from Gallery</Text>
+                <Text style={styles.uploadSubtitle}>
+                  Automatic on-device OCR extracts text from bank SMS & WhatsApp previews
+                </Text>
+              </View>
+              <Icon name="ChevronRight" size={18} color={Colors.textTertiary} strokeWidth={2} />
+            </TouchableOpacity>
           )}
 
-          {/* Primary Action Button: "Check for Fraud" / "Check this message" */}
+          {/* Primary Action Button: "Scan Threat with AI" */}
           <TouchableOpacity
             style={[
               styles.primaryCheckBtn,
@@ -358,32 +441,26 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
             disabled={!canCheck}
             activeOpacity={0.88}
             accessibilityRole="button"
-            accessibilityLabel="Check for Fraud">
-            <Icon
-              name="Search"
-              size={18}
-              color="#FFFFFF"
-              strokeWidth={2.5}
-              style={{ marginRight: 8 }}
-            />
+            accessibilityLabel="Scan Threat with AI">
+            <Icon name="Shield" size={18} color="#FFFFFF" strokeWidth={2.5} style={{ marginRight: 8 }} />
             <Text style={styles.primaryCheckBtnText}>
-              {step === 'OCR_REVIEW' ? 'Check this message' : 'Check for Fraud'}
+              {step === 'OCR_REVIEW' ? 'ANALYZE EXTRACTED TEXT' : 'SCAN THREAT WITH AI'}
             </Text>
           </TouchableOpacity>
 
-          {/* Sample quick-fill helper links for evaluation/testing */}
+          {/* Quick test helpers */}
           <View style={styles.sampleRow}>
-            <Text style={styles.samplePrefix}>Quick test:</Text>
+            <Text style={styles.samplePrefix}>Quick samples:</Text>
             <TouchableOpacity
               onPress={() => handleLoadSample('scam')}
               hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
-              <Text style={styles.sampleLink}>Suspicious Alert</Text>
+              <Text style={styles.sampleLinkScam}>Bank KYC Scam</Text>
             </TouchableOpacity>
             <Text style={styles.sampleDot}>•</Text>
             <TouchableOpacity
               onPress={() => handleLoadSample('safe')}
               hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
-              <Text style={styles.sampleLink}>Safe Delivery</Text>
+              <Text style={styles.sampleLinkSafe}>Legitimate Delivery</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -392,10 +469,12 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
       {/* ─── State 2: OCR LOADING STATE ─────────────────────────────── */}
       {step === 'OCR_READING' && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-          <Text style={styles.loadingTitle}>Reading screenshot...</Text>
+          <View style={styles.loadingRadarCircle}>
+            <Icon name="Scan" size={32} color={Colors.secondary} strokeWidth={2.4} />
+          </View>
+          <Text style={styles.loadingTitle}>Scanning Screenshot...</Text>
           <Text style={styles.loadingSubtitle}>
-            Extracting text from image on-device. Your screenshot never leaves your phone.
+            Extracting text tokens on-device. Image data remains 100% confidential.
           </Text>
         </View>
       )}
@@ -403,177 +482,161 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
       {/* ─── State 4: FRAUD ANALYSIS LOADING STATE ──────────────────── */}
       {step === 'ANALYZING' && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-          <Text style={styles.loadingTitle}>Checking message...</Text>
+          <View style={styles.loadingRadarCircle}>
+            <Icon name="Shield" size={32} color={Colors.primary} strokeWidth={2.4} />
+          </View>
+          <Text style={styles.loadingTitle}>Evaluating Threat Vectors...</Text>
           <Text style={styles.loadingSubtitle}>
-            Evaluating linguistic patterns, URLs, and known fraud indicators...
+            Running DistilBERT deep linguistic analysis & URL spoof verification...
           </Text>
         </View>
       )}
 
-      {/* ─── State 5: FRAUD RESULT STATE ────────────────────────────── */}
+      {/* ─── State 5: PREMIUM RESULT STATE ──────────────────────────── */}
       {step === 'RESULT' && checkResult && (
         <View style={styles.resultContainer}>
-          {/* Result Status Banner */}
-          {checkResult.state === 'POTENTIAL_FRAUD' && (
-            <View style={[styles.resultBanner, styles.bannerFraud]}>
-              <View style={styles.resultHeaderRow}>
-                <View style={[styles.statusIconBox, styles.statusIconFraud]}>
-                  <Icon
-                    name="AlertTriangle"
-                    size={22}
-                    color="#DC2626"
-                    strokeWidth={2.4}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.resultTitle, styles.textFraud]}>
-                    {checkResult.title}
-                  </Text>
-                  <Text style={styles.resultSummary}>
-                    {checkResult.summary}
-                  </Text>
-                </View>
-              </View>
+          {(() => {
+            const isFraud = checkResult.state === 'POTENTIAL_FRAUD';
+            const isSafe = checkResult.state === 'LIKELY_SAFE';
+            const isSuspicious = !isFraud && !isSafe && checkResult.riskScore >= 0.40;
 
-              {/* Fraud Risk Score Metric */}
-              <View style={styles.riskScoreMetricRow}>
-                <View>
-                  <Text style={styles.riskScoreLabel}>Fraud Risk</Text>
-                  <Text style={[styles.riskScoreValue, styles.textFraud]}>
-                    {checkResult.scorePercentage}%
-                  </Text>
-                </View>
-                <View style={styles.riskPillHigh}>
-                  <Text style={styles.riskPillTextHigh}>High Risk</Text>
-                </View>
-              </View>
+            const bannerStyle = isFraud
+              ? styles.bannerFraud
+              : isSuspicious
+              ? styles.bannerSuspicious
+              : styles.bannerSafe;
 
-              {/* Supported Reasons List */}
-              {checkResult.reasons && checkResult.reasons.length > 0 && (
-                <View style={styles.reasonsBox}>
-                  <Text style={styles.reasonsHeader}>Key Warning Indicators:</Text>
-                  {checkResult.reasons.map((reason, idx) => (
-                    <View key={`reason-${idx}`} style={styles.reasonItemRow}>
-                      <View style={styles.reasonBullet} />
-                      <Text style={styles.reasonText}>{reason}</Text>
+            const iconName = isFraud
+              ? 'AlertTriangle'
+              : isSuspicious
+              ? 'AlertCircle'
+              : 'ShieldCheck';
+
+            const iconColor = isFraud
+              ? Colors.error
+              : isSuspicious
+              ? Colors.warning
+              : Colors.success;
+
+            const riskText = isFraud
+              ? 'HIGH FRAUD THREAT'
+              : isSuspicious
+              ? 'SUSPICIOUS ACTIVITY'
+              : 'VERIFIED LOW RISK';
+
+            return (
+              <View style={[styles.resultBanner, bannerStyle, Shadows.card]}>
+                {/* Status Header */}
+                <View style={styles.resultHeaderRow}>
+                  <View
+                    style={[
+                      styles.statusIconBox,
+                      {
+                        backgroundColor: isFraud
+                          ? 'rgba(239, 68, 68, 0.15)'
+                          : isSuspicious
+                          ? 'rgba(245, 158, 11, 0.15)'
+                          : 'rgba(34, 197, 94, 0.15)',
+                        borderColor: isFraud
+                          ? 'rgba(239, 68, 68, 0.35)'
+                          : isSuspicious
+                          ? 'rgba(245, 158, 11, 0.35)'
+                          : 'rgba(34, 197, 94, 0.35)',
+                      },
+                    ]}>
+                    <Icon name={iconName} size={24} color={iconColor} strokeWidth={2.5} />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.verdictBadgeRow}>
+                      <Text
+                        style={[
+                          styles.resultVerdictTitle,
+                          { color: iconColor },
+                        ]}>
+                        {checkResult.title}
+                      </Text>
                     </View>
-                  ))}
+                    <Text style={styles.resultSummary}>{checkResult.summary}</Text>
+                  </View>
                 </View>
-              )}
-            </View>
-          )}
 
-          {checkResult.state === 'LIKELY_SAFE' && (
-            <View style={[styles.resultBanner, styles.bannerSafe]}>
-              <View style={styles.resultHeaderRow}>
-                <View style={[styles.statusIconBox, styles.statusIconSafe]}>
-                  <Icon
-                    name="CheckCircle2"
-                    size={22}
-                    color="#059669"
-                    strokeWidth={2.4}
-                  />
+                {/* Risk Score Progress Bar & Percentage */}
+                <View style={styles.riskMeterSection}>
+                  <View style={styles.riskMeterTop}>
+                    <Text style={styles.riskMeterLabel}>AI THREAT CONFIDENCE</Text>
+                    <Text style={[styles.riskMeterValue, { color: iconColor }]}>
+                      {checkResult.scorePercentage}% RISK
+                    </Text>
+                  </View>
+                  <View style={styles.riskTrack}>
+                    <View
+                      style={[
+                        styles.riskFill,
+                        {
+                          width: `${Math.max(checkResult.scorePercentage, 6)}%`,
+                          backgroundColor: iconColor,
+                        },
+                      ]}
+                    />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.resultTitle, styles.textSafe]}>
-                    {checkResult.title}
-                  </Text>
-                  <Text style={styles.resultSummary}>
-                    {checkResult.summary}
-                  </Text>
-                </View>
+
+                {/* Key Indicators / Reasons Breakdown */}
+                {checkResult.reasons && checkResult.reasons.length > 0 && (
+                  <View style={styles.reasonsBox}>
+                    <Text style={styles.reasonsHeader}>SUSPICIOUS INDICATORS IDENTIFIED:</Text>
+                    {checkResult.reasons.map((reason, idx) => (
+                      <View key={`reason-${idx}`} style={styles.reasonItemRow}>
+                        <Icon name="AlertCircle" size={13} color={iconColor} style={{ marginRight: 8, marginTop: 2 }} />
+                        <Text style={styles.reasonText}>{reason}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Safe Advice Box */}
+                {isSafe && (
+                  <View style={styles.safeNoticeBox}>
+                    <Icon name="Info" size={14} color={Colors.success} strokeWidth={2} style={{ marginRight: 8 }} />
+                    <Text style={styles.safeNoticeText}>
+                      Probabilistic evaluation indicates genuine syntax. Remember never to disclose PINs or OTPs.
+                    </Text>
+                  </View>
+                )}
               </View>
+            );
+          })()}
 
-              {/* Fraud Risk Score Metric */}
-              <View style={styles.riskScoreMetricRow}>
-                <View>
-                  <Text style={styles.riskScoreLabel}>Fraud Risk</Text>
-                  <Text style={[styles.riskScoreValue, styles.textSafe]}>
-                    {checkResult.scorePercentage}%
-                  </Text>
-                </View>
-                <View style={styles.riskPillLow}>
-                  <Text style={styles.riskPillTextLow}>Low Risk</Text>
-                </View>
-              </View>
-
-              <View style={styles.safeNoticeBox}>
-                <Icon name="Info" size={14} color="#047857" strokeWidth={2} />
-                <Text style={styles.safeNoticeText}>
-                  This is a probabilistic risk assessment. Always independently verify unexpected payment or login requests.
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {checkResult.state === 'ERROR' && (
-            <View style={[styles.resultBanner, styles.bannerError]}>
-              <View style={styles.resultHeaderRow}>
-                <View style={[styles.statusIconBox, styles.statusIconError]}>
-                  <Icon
-                    name="AlertCircle"
-                    size={22}
-                    color="#B45309"
-                    strokeWidth={2.4}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.resultTitle, styles.textWarning]}>
-                    {checkResult.title}
-                  </Text>
-                  <Text style={styles.resultSummary}>
-                    {checkResult.summary}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Analyzed Message Preview */}
+          {/* Analyzed Message Preview Card */}
           <View style={styles.analyzedMessageBox}>
-            <Text style={styles.analyzedMessageLabel}>Analyzed Message:</Text>
+            <Text style={styles.analyzedMessageLabel}>SCANNED PAYLOAD:</Text>
             <Text style={styles.analyzedMessageContent} numberOfLines={4}>
               "{checkResult.analyzedText}"
             </Text>
           </View>
 
-          {/* Action Row */}
+          {/* Action Buttons: Consult AI Assistant & Scan Again */}
           <View style={styles.resultActionsRow}>
-            {checkResult.state === 'ERROR' ? (
-              <TouchableOpacity
-                style={styles.primaryCheckBtn}
-                onPress={handleRunFraudCheck}
-                activeOpacity={0.88}
-                accessibilityRole="button"
-                accessibilityLabel="Retry check">
-                <Icon name="RefreshCw" size={16} color="#FFFFFF" strokeWidth={2.2} style={{ marginRight: 6 }} />
-                <Text style={styles.primaryCheckBtnText}>Retry Check</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.resultButtonsStack}>
-                <TouchableOpacity
-                  style={styles.explainDetectionBtn}
-                  onPress={handleExplainDetection}
-                  activeOpacity={0.88}
-                  accessibilityRole="button"
-                  accessibilityLabel="Understand this warning">
-                  <Icon name="Sparkles" size={16} color="#FFFFFF" strokeWidth={2.2} style={{ marginRight: 8 }} />
-                  <Text style={styles.explainDetectionBtnText}>
-                    {checkResult.riskScore >= 0.70 ? 'Understand this warning' : 'Explain this result'}
-                  </Text>
-                </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.assistantBtn}
+              onPress={handleExplainDetection}
+              activeOpacity={0.88}
+              accessibilityRole="button"
+              accessibilityLabel="Ask AI Assistant to Explain">
+              <Icon name="Bot" size={17} color="#FFFFFF" strokeWidth={2.4} style={{ marginRight: 8 }} />
+              <Text style={styles.assistantBtnText}>EXPLAIN WITH AI ASSISTANT</Text>
+            </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.checkAnotherBtn}
-                  onPress={handleReset}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel="Check another message">
-                  <Text style={styles.checkAnotherBtnText}>Check Another Message</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <TouchableOpacity
+              style={styles.scanAgainBtn}
+              onPress={handleReset}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel="Scan another message">
+              <Icon name="RefreshCw" size={16} color={Colors.textSecondary} strokeWidth={2.2} style={{ marginRight: 6 }} />
+              <Text style={styles.scanAgainBtnText}>Scan Another Message</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -583,208 +646,103 @@ export const MessageFraudChecker: React.FC<MessageFraudCheckerProps> = ({
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 20,
-    marginVertical: Spacing.sm,
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    ...Shadows.card,
+    paddingBottom: Spacing.xl,
   },
-
-  // Header
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 16,
   },
   headerIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#0B132B',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    marginTop: 2,
   },
   headerTextGroup: {
     flex: 1,
   },
+  titleBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
   heading: {
     fontSize: 20,
-    lineHeight: 26,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
     letterSpacing: -0.3,
   },
+  aiBadge: {
+    backgroundColor: 'rgba(0, 123, 167, 0.15)',
+    borderColor: 'rgba(0, 123, 167, 0.35)',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  aiBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.primaryLight,
+    letterSpacing: 0.5,
+  },
   subheading: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#64748B',
-    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.textSecondary,
+  },
+
+  // Mode Selector Tabs
+  modeTabsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#0B132B',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 9,
+  },
+  modeTabActive: {
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
+  },
+  modeTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textTertiary,
+  },
+  modeTabTextActive: {
+    color: Colors.secondary,
+    fontWeight: '700',
   },
 
   contentBody: {
-    marginTop: 4,
-  },
-
-  // Multiline Input
-  inputBox: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 8,
-    minHeight: 120,
-  },
-  inputBoxFocused: {
-    borderColor: PRIMARY_COLOR,
-  },
-  inputBoxError: {
-    borderColor: '#EF4444',
-  },
-  textInput: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#0F172A',
-    minHeight: 80,
-    padding: 0,
-  },
-  inputFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 6,
-  },
-  charCount: {
-    fontSize: 12,
-    color: '#94A3B8',
-  },
-  clearTextLink: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: PRIMARY_COLOR,
-  },
-
-  // Divider
-  orDividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 14,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E2E8F0',
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-  },
-
-  // Upload Screenshot Card
-  uploadCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-  },
-  uploadIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  uploadTextContainer: {
-    flex: 1,
-  },
-  uploadTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0F172A',
-    marginBottom: 2,
-  },
-  uploadSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-  },
-
-  // Primary Check Action Button
-  primaryCheckBtn: {
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 12,
-    height: 50,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  primaryCheckBtnDisabled: {
-    opacity: 0.45,
-  },
-  primaryCheckBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-
-  // Image Preview Row
-  imagePreviewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 10,
-    padding: 8,
-    marginBottom: 10,
-  },
-  imageThumbnail: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    marginRight: 10,
-    backgroundColor: '#E2E8F0',
-  },
-  imageDetailsCol: {
-    flex: 1,
-  },
-  imageTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0F172A',
-  },
-  imageSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  imageRemoveBtn: {
-    padding: 6,
+    gap: 12,
   },
 
   // OCR Review Banner
   reviewBanner: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: 'rgba(0, 123, 167, 0.08)',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: 'rgba(0, 123, 167, 0.25)',
+    padding: 12,
   },
   reviewBannerHeader: {
     flexDirection: 'row',
@@ -795,291 +753,443 @@ const styles = StyleSheet.create({
   reviewBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
   reviewBadgeText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#1E40AF',
-    marginLeft: 6,
+    color: Colors.secondary,
   },
   replaceImageBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 2,
-    paddingHorizontal: 6,
+    gap: 4,
   },
   replaceImageText: {
-    fontSize: 12,
+    fontSize: 11,
+    color: Colors.secondary,
     fontWeight: '600',
-    color: PRIMARY_COLOR,
-    marginLeft: 4,
   },
   reviewTip: {
-    fontSize: 12,
-    color: '#3B82F6',
+    fontSize: 11,
     lineHeight: 16,
+    color: Colors.textSecondary,
   },
 
-  // Sample quick tests
+  // Image Preview Row
+  imagePreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  imageThumbnail: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#0B132B',
+    marginRight: 10,
+  },
+  imageDetailsCol: {
+    flex: 1,
+  },
+  imageTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  imageSubtitle: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
+  imageRemoveBtn: {
+    padding: 8,
+  },
+
+  // Input Box
+  inputBox: {
+    backgroundColor: '#0B132B',
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: Colors.border,
+    padding: 14,
+  },
+  inputBoxFocused: {
+    borderColor: Colors.secondary,
+    shadowColor: Colors.secondary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  inputBoxError: {
+    borderColor: Colors.error,
+  },
+  inputToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 240, 255, 0.18)',
+    marginBottom: 8,
+  },
+  inputToolbarTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textTertiary,
+    letterSpacing: 0.6,
+  },
+  toolbarActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  toolbarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toolbarBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.secondary,
+  },
+  toolbarBtnTextMuted: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.textTertiary,
+  },
+  textInput: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: Colors.textPrimary,
+    minHeight: 120,
+    paddingVertical: 0,
+  },
+  inputFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 240, 255, 0.18)',
+    marginTop: 8,
+  },
+  charCount: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
+  securityHint: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+  },
+
+  // Upload Card
+  uploadCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  uploadIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#0B132B',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  uploadTextContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  uploadTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  uploadSubtitle: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    lineHeight: 15,
+  },
+
+  // Primary Check Button
+  primaryCheckBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
+    marginTop: 4,
+  },
+  primaryCheckBtnDisabled: {
+    opacity: 0.5,
+  },
+  primaryCheckBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+
+  // Samples
   sampleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    gap: 6,
+    marginTop: 4,
   },
   samplePrefix: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginRight: 6,
+    fontSize: 11,
+    color: Colors.textTertiary,
   },
-  sampleLink: {
-    fontSize: 12,
+  sampleLinkScam: {
+    fontSize: 11,
     fontWeight: '600',
-    color: PRIMARY_COLOR,
+    color: '#DC2626',
+  },
+  sampleLinkSafe: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#16A34A',
   },
   sampleDot: {
-    marginHorizontal: 6,
-    color: '#CBD5E1',
-    fontSize: 12,
+    color: Colors.textTertiary,
   },
 
-  // Loading States
+  // Loading State
   loadingContainer: {
+    backgroundColor: Colors.card,
+    borderRadius: 18,
+    padding: 32,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  loadingRadarCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#0B132B',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
     justifyContent: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 16,
   },
   loadingTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0F172A',
-    marginTop: 14,
-    marginBottom: 4,
+    color: Colors.textPrimary,
+    marginBottom: 6,
   },
   loadingSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
+    fontSize: 12,
     lineHeight: 18,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    maxWidth: 280,
   },
 
-  // Result States
+  // Result Card Container
   resultContainer: {
-    marginTop: 4,
+    gap: 12,
   },
   resultBanner: {
-    borderRadius: 14,
+    borderRadius: 18,
     padding: 16,
-    borderWidth: 1.5,
-    marginBottom: 12,
+    borderWidth: 1.2,
   },
   bannerFraud: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+  },
+  bannerSuspicious: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderColor: 'rgba(245, 158, 11, 0.4)',
   },
   bannerSafe: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
-  },
-  bannerError: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderColor: 'rgba(34, 197, 94, 0.4)',
   },
   resultHeaderRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    marginBottom: 14,
   },
   statusIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
-    marginTop: 1,
+    marginRight: 12,
+    marginTop: 2,
   },
-  statusIconFraud: {
-    backgroundColor: '#FEE2E2',
+  verdictBadgeRow: {
+    marginBottom: 3,
   },
-  statusIconSafe: {
-    backgroundColor: '#D1FAE5',
-  },
-  statusIconError: {
-    backgroundColor: '#FEF3C7',
-  },
-  resultTitle: {
-    fontSize: 18,
+  resultVerdictTitle: {
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
-    marginBottom: 4,
-  },
-  textFraud: {
-    color: '#B91C1C',
-  },
-  textSafe: {
-    color: '#047857',
-  },
-  textWarning: {
-    color: '#B45309',
   },
   resultSummary: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#334155',
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.textSecondary,
   },
 
-  // Risk Score Metric
-  riskScoreMetricRow: {
+  // Risk Meter
+  riskMeterSection: {
+    backgroundColor: '#0B132B',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+  },
+  riskMeterTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+    marginBottom: 8,
   },
-  riskScoreLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    color: '#64748B',
-    letterSpacing: 0.5,
+  riskMeterLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textTertiary,
+    letterSpacing: 0.6,
   },
-  riskScoreValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  riskPillHigh: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  riskPillTextHigh: {
+  riskMeterValue: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#DC2626',
+    letterSpacing: 0.4,
   },
-  riskPillLow: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+  riskTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0, 240, 255, 0.18)',
+    overflow: 'hidden',
   },
-  riskPillTextLow: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#059669',
+  riskFill: {
+    height: '100%',
+    borderRadius: 3,
   },
 
   // Reasons Box
   reasonsBox: {
-    marginTop: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: 10,
+    backgroundColor: '#0B132B',
+    borderRadius: 12,
     padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 4,
   },
   reasonsHeader: {
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textTertiary,
+    letterSpacing: 0.6,
     marginBottom: 8,
   },
   reasonItemRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  reasonBullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#DC2626',
-    marginRight: 8,
+    alignItems: 'flex-start',
+    marginTop: 5,
   },
   reasonText: {
-    fontSize: 13,
-    color: '#1E293B',
-    fontWeight: '500',
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: Colors.textPrimary,
   },
 
-  // Safe Notice Box
   safeNoticeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.25)',
+    marginTop: 4,
   },
   safeNoticeText: {
-    fontSize: 12,
-    color: '#047857',
-    marginLeft: 6,
     flex: 1,
+    fontSize: 11,
     lineHeight: 16,
+    color: '#16A34A',
   },
 
-  // Analyzed message preview
   analyzedMessageBox: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 14,
+    borderColor: Colors.border,
   },
   analyzedMessageLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    color: '#94A3B8',
-    marginBottom: 4,
-    letterSpacing: 0.5,
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textTertiary,
+    letterSpacing: 0.6,
+    marginBottom: 6,
   },
   analyzedMessageContent: {
     fontSize: 13,
-    color: '#475569',
+    lineHeight: 19,
+    color: Colors.textPrimary,
     fontStyle: 'italic',
-    lineHeight: 18,
   },
 
-  // Result action buttons
   resultActionsRow: {
+    gap: 10,
     marginTop: 4,
   },
-  resultButtonsStack: {
-    gap: 10,
-  },
-  explainDetectionBtn: {
+  assistantBtn: {
+    backgroundColor: '#000000',
+    borderRadius: 14,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 12,
-    height: 48,
-    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
   },
-  explainDetectionBtnText: {
+  assistantBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
+    letterSpacing: 0.4,
   },
-  checkAnotherBtn: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: PRIMARY_COLOR,
-    borderRadius: 12,
-    height: 48,
-    justifyContent: 'center',
+  scanAgainBtn: {
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    height: 44,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  checkAnotherBtnText: {
-    color: PRIMARY_COLOR,
-    fontSize: 15,
-    fontWeight: '700',
+  scanAgainBtnText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 

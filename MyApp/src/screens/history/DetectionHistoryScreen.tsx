@@ -1,9 +1,13 @@
 /**
- * Detection History Screen — FraudShield
+ * Detection History Screen — FraudShield Cyber Edition
  *
- * Displays genuine past message fraud detections from WhatsApp, SMS, Manual Scan, and OCR.
- * Supports filtering by severity (All / Threats / Clean), clearing history, and inspects
- * real local records with zero fabricated data.
+ * Displays genuine past message fraud detections from WhatsApp, SMS, Manual Scan, and OCR:
+ * - Search bar with instant payload filtering
+ * - 4 Filter chips: All | Safe | Fraud | Suspicious
+ * - Cyber history cards with status badges, timestamp, and detection type
+ * - Expandable modal / details view
+ * - Clear history action with confirmation
+ * - Beautiful empty state
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -12,13 +16,18 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Modal,
+  ScrollView,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Icon from '../../components/Icon';
+import Badge from '../../components/Badge';
 import { Colors, Typography, Spacing, Shadows } from '../../theme/theme';
 import {
   DetectionRecord,
@@ -27,13 +36,13 @@ import {
   subscribeToDetectionHistory,
 } from '../../storage/detectionHistoryStorage';
 
-const PRIMARY_COLOR = '#3a86ff';
-
 export const DetectionHistoryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [records, setRecords] = useState<DetectionRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [filter, setFilter] = useState<'ALL' | 'FRAUD' | 'CLEAN'>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filter, setFilter] = useState<'ALL' | 'SAFE' | 'FRAUD' | 'SUSPICIOUS'>('ALL');
+  const [selectedRecord, setSelectedRecord] = useState<DetectionRecord | null>(null);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -56,8 +65,8 @@ export const DetectionHistoryScreen: React.FC = () => {
     if (records.length === 0) return;
 
     Alert.alert(
-      'Clear History',
-      'Are you sure you want to delete all saved detection records? This cannot be undone.',
+      'Clear Detection Telemetry',
+      'Are you sure you want to delete all saved detection logs? This action is irreversible.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -73,8 +82,26 @@ export const DetectionHistoryScreen: React.FC = () => {
   };
 
   const filteredRecords = records.filter((r) => {
-    if (filter === 'FRAUD') return r.isFraud;
-    if (filter === 'CLEAN') return !r.isFraud;
+    // 1. Text Search Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const inPreview = (r.preview || '').toLowerCase().includes(q);
+      const inSource = (r.source || '').toLowerCase().includes(q);
+      const inReasons = (r.reasons || []).some((reason) =>
+        reason.toLowerCase().includes(q),
+      );
+      if (!inPreview && !inSource && !inReasons) return false;
+    }
+
+    // 2. Status Filter
+    const isThreat = r.isFraud || r.riskScore >= 0.70;
+    const isSuspicious = !isThreat && r.riskScore >= 0.40;
+    const isSafe = !isThreat && !isSuspicious;
+
+    if (filter === 'FRAUD') return isThreat;
+    if (filter === 'SUSPICIOUS') return isSuspicious;
+    if (filter === 'SAFE') return isSafe;
+
     return true;
   });
 
@@ -97,27 +124,39 @@ export const DetectionHistoryScreen: React.FC = () => {
     });
   };
 
-  const getSourceLabel = (src: string): string => {
+  const getSourceConfig = (src: string) => {
     const s = (src || '').toUpperCase();
-    if (s.includes('WHATSAPP')) return 'WhatsApp';
-    if (s.includes('SMS')) return 'SMS';
-    if (s.includes('OCR')) return 'Screenshot OCR';
-    if (s.includes('MANUAL_SCAN')) return 'Screen Assistant';
-    return 'Manual Checker';
+    if (s.includes('WHATSAPP')) {
+      return { label: 'WhatsApp', icon: 'Mail' as const, color: '#25D366' };
+    }
+    if (s.includes('SMS')) {
+      return { label: 'SMS Payload', icon: 'FileText' as const, color: Colors.primaryLight };
+    }
+    if (s.includes('OCR')) {
+      return { label: 'Screenshot OCR', icon: 'Image' as const, color: '#A78BFA' };
+    }
+    if (s.includes('MANUAL_SCAN')) {
+      return { label: 'Screen Defense', icon: 'Bot' as const, color: Colors.primary };
+    }
+    return { label: 'Manual Check', icon: 'Shield' as const, color: Colors.primaryLight };
   };
 
   const handleExplainRecord = (record: DetectionRecord) => {
+    setSelectedRecord(null);
+    const isThreat = record.isFraud || record.riskScore >= 0.70;
+    const isSuspicious = !isThreat && record.riskScore >= 0.40;
+
     navigation.navigate('AssistantChat', {
       mode: 'detection_explanation',
       detectionContext: {
         detectionId: record.id,
         source: record.source,
-        classification: record.classification || (record.isFraud ? 'FRAUD' : 'LEGITIMATE'),
+        classification: record.classification || (isThreat ? 'FRAUD' : isSuspicious ? 'SUSPICIOUS' : 'LEGITIMATE'),
         riskScore: record.riskScore,
         reasons: record.reasons || [],
         safePreview: record.preview,
       },
-      initialPrompt: record.isFraud || record.riskScore >= 0.70
+      initialPrompt: isThreat
         ? 'Why was this message flagged as a threat and what signs indicate fraud?'
         : 'Can you explain the safety assessment of this message?',
     });
@@ -125,33 +164,36 @@ export const DetectionHistoryScreen: React.FC = () => {
 
   const renderItem = ({ item }: { item: DetectionRecord }) => {
     const isThreat = item.isFraud || item.riskScore >= 0.70;
+    const isSuspicious = !isThreat && item.riskScore >= 0.40;
     const scorePct = Math.round(item.riskScore * 100);
+    const sourceCfg = getSourceConfig(item.source);
 
     return (
-      <View style={[styles.recordCard, Shadows.card]}>
+      <TouchableOpacity
+        style={[
+          styles.recordCard,
+          isThreat && styles.recordCardThreat,
+          Shadows.card,
+        ]}
+        activeOpacity={0.85}
+        onPress={() => setSelectedRecord(item)}>
         {/* Top Meta Row */}
         <View style={styles.cardHeaderRow}>
           <View style={styles.sourceBadge}>
             <Icon
-              name={
-                item.source.includes('WHATSAPP')
-                  ? 'Mail'
-                  : item.source.includes('OCR')
-                  ? 'Image'
-                  : 'Shield'
-              }
+              name={sourceCfg.icon}
               size={12}
-              color={PRIMARY_COLOR}
+              color={sourceCfg.color}
               strokeWidth={2.4}
-              style={{ marginRight: 4 }}
+              style={{ marginRight: 5 }}
             />
-            <Text style={styles.sourceText}>{getSourceLabel(item.source)}</Text>
+            <Text style={styles.sourceText}>{sourceCfg.label}</Text>
           </View>
 
           <Text style={styles.timeText}>{formatTimestamp(item.timestamp)}</Text>
         </View>
 
-        {/* Shortened Message Preview */}
+        {/* Message Preview */}
         <Text style={styles.previewText} numberOfLines={2}>
           "{item.preview}"
         </Text>
@@ -160,112 +202,133 @@ export const DetectionHistoryScreen: React.FC = () => {
         <View style={styles.cardFooterRow}>
           <View style={styles.statusIndicatorGroup}>
             <Icon
-              name={isThreat ? 'AlertTriangle' : 'CheckCircle2'}
-              size={16}
-              color={isThreat ? '#DC2626' : '#059669'}
+              name={
+                isThreat
+                  ? 'AlertTriangle'
+                  : isSuspicious
+                  ? 'AlertCircle'
+                  : 'CheckCircle2'
+              }
+              size={14}
+              color={
+                isThreat
+                  ? Colors.error
+                  : isSuspicious
+                  ? Colors.warning
+                  : Colors.success
+              }
               strokeWidth={2.4}
               style={{ marginRight: 6 }}
             />
             <Text
               style={[
                 styles.statusLabel,
-                isThreat ? styles.textThreat : styles.textClean,
+                isThreat
+                  ? styles.textThreat
+                  : isSuspicious
+                  ? styles.textSuspicious
+                  : styles.textClean,
               ]}>
-              {isThreat ? 'Potential Fraud' : 'Likely Safe'}
+              {isThreat
+                ? 'Potential Fraud'
+                : isSuspicious
+                ? 'Suspicious Payload'
+                : 'Verified Safe'}
             </Text>
           </View>
 
-          <View style={[styles.scorePill, isThreat ? styles.scorePillThreat : styles.scorePillClean]}>
-            <Text style={[styles.scorePillText, isThreat ? styles.scorePillTextThreat : styles.scorePillTextClean]}>
-              {scorePct}% Risk
-            </Text>
-          </View>
+          <Badge
+            label={`${scorePct}% RISK`}
+            variant={isThreat ? 'fraud' : isSuspicious ? 'suspicious' : 'safe'}
+            size="sm"
+          />
         </View>
-
-        {/* Understand this warning action button */}
-        <TouchableOpacity
-          style={styles.cardExplainBtn}
-          onPress={() => handleExplainRecord(item)}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Understand this warning">
-          <Icon name="Sparkles" size={13} color={PRIMARY_COLOR} strokeWidth={2.2} style={{ marginRight: 6 }} />
-          <Text style={styles.cardExplainText}>Understand this warning</Text>
-          <Icon name="ChevronRight" size={12} color={PRIMARY_COLOR} strokeWidth={2.4} style={{ marginLeft: 'auto' }} />
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="light-content" />
+
       {/* ─── Screen Header ─────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Detection History</Text>
-          <Text style={styles.headerSubtitle}>
-            {records.length} total event{records.length === 1 ? '' : 's'} recorded
+      <View style={styles.screenHeader}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.screenTitle}>Detection History</Text>
+          <Text style={styles.screenSubtitle}>
+            {records.length} logged inspection payloads
           </Text>
         </View>
 
         {records.length > 0 && (
           <TouchableOpacity
-            onPress={handleClearHistory}
             style={styles.clearBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            onPress={handleClearHistory}
             accessibilityRole="button"
             accessibilityLabel="Clear history">
-            <Icon name="Trash2" size={16} color={Colors.textTertiary} strokeWidth={2} />
+            <Icon name="Trash2" size={15} color={Colors.error} />
+            <Text style={styles.clearBtnText}>Clear</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* ─── Filter Tabs ───────────────────────────────────────────── */}
-      <View style={styles.filterRow}>
-        <TouchableOpacity
-          style={[styles.filterChip, filter === 'ALL' && styles.filterChipActive]}
-          onPress={() => setFilter('ALL')}>
-          <Text style={[styles.filterChipText, filter === 'ALL' && styles.filterChipTextActive]}>
-            All ({records.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterChip, filter === 'FRAUD' && styles.filterChipActive]}
-          onPress={() => setFilter('FRAUD')}>
-          <Text style={[styles.filterChipText, filter === 'FRAUD' && styles.filterChipTextActive]}>
-            Threats ({records.filter((r) => r.isFraud).length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterChip, filter === 'CLEAN' && styles.filterChipActive]}
-          onPress={() => setFilter('CLEAN')}>
-          <Text style={[styles.filterChipText, filter === 'CLEAN' && styles.filterChipTextActive]}>
-            Clean ({records.filter((r) => !r.isFraud).length})
-          </Text>
-        </TouchableOpacity>
+      {/* ─── Search Bar ─────────────────────────────────────────────── */}
+      <View style={styles.searchContainer}>
+        <Icon name="Search" size={16} color={Colors.textTertiary} style={{ marginRight: 8 }} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by keywords, source, or reasons..."
+          placeholderTextColor={Colors.placeholder}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Icon name="X" size={16} color={Colors.textTertiary} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* ─── Record List or Empty State ────────────────────────────── */}
+      {/* ─── Filter Chips (All, Safe, Fraud, Suspicious) ────────────── */}
+      <View style={styles.filtersRow}>
+        {(['ALL', 'SAFE', 'FRAUD', 'SUSPICIOUS'] as const).map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.filterChip, filter === tab && styles.filterChipActive]}
+            onPress={() => setFilter(tab)}>
+            <Text
+              style={[
+                styles.filterChipText,
+                filter === tab && styles.filterChipTextActive,
+              ]}>
+              {tab.charAt(0) + tab.slice(1).toLowerCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ─── Main Content ──────────────────────────────────────────── */}
       {loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Reading local telemetry...</Text>
         </View>
       ) : filteredRecords.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
-            <Icon name="ShieldCheck" size={32} color={PRIMARY_COLOR} strokeWidth={2.2} />
+            <Icon name="Shield" size={34} color={Colors.primary} strokeWidth={2.2} />
           </View>
           <Text style={styles.emptyTitle}>
-            {filter === 'ALL'
-              ? 'No detections recorded yet'
-              : filter === 'FRAUD'
-              ? 'No fraud threats flagged'
-              : 'No clean message records'}
+            {searchQuery || filter !== 'ALL'
+              ? 'No matching detections'
+              : 'Telemetry Log is Clean'}
           </Text>
           <Text style={styles.emptySubtitle}>
-            Incoming messages from WhatsApp and SMS are checked automatically in the background. You can also manually check suspicious text or screenshots.
+            {searchQuery || filter !== 'ALL'
+              ? 'Try modifying your search keywords or switching filters.'
+              : 'Messages inspected through SMS, WhatsApp, or OCR will be securely recorded here.'}
           </Text>
         </View>
       ) : (
@@ -277,78 +340,217 @@ export const DetectionHistoryScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* ─── Inspection Detail Modal ───────────────────────────────── */}
+      {selectedRecord && (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectedRecord(null)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalHeaderTitleRow}>
+                  <Icon
+                    name={
+                      selectedRecord.isFraud || selectedRecord.riskScore >= 0.70
+                        ? 'AlertTriangle'
+                        : selectedRecord.riskScore >= 0.40
+                        ? 'AlertCircle'
+                        : 'CheckCircle2'
+                    }
+                    size={20}
+                    color={
+                      selectedRecord.isFraud || selectedRecord.riskScore >= 0.70
+                        ? Colors.error
+                        : selectedRecord.riskScore >= 0.40
+                        ? Colors.warning
+                        : Colors.success
+                    }
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.modalTitle}>Inspection Telemetry</Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setSelectedRecord(null)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Icon name="X" size={18} color={Colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionLabel}>SOURCE CHANNEL</Text>
+                  <Text style={styles.modalSectionVal}>
+                    {selectedRecord.source} • {formatTimestamp(selectedRecord.timestamp)}
+                  </Text>
+                </View>
+
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionLabel}>MESSAGE CONTENT</Text>
+                  <View style={styles.modalMessageBox}>
+                    <Text style={styles.modalMessageText}>
+                      "{selectedRecord.preview}"
+                    </Text>
+                  </View>
+                </View>
+
+                {selectedRecord.reasons && selectedRecord.reasons.length > 0 && (
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionLabel}>AI REASONING INDICATORS</Text>
+                    {selectedRecord.reasons.map((r, i) => (
+                      <View key={i} style={styles.modalReasonRow}>
+                        <Icon name="AlertCircle" size={12} color={Colors.error} style={{ marginRight: 6, marginTop: 2 }} />
+                        <Text style={styles.modalReasonText}>{r}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionLabel}>THREAT CONFIDENCE</Text>
+                  <Text
+                    style={[
+                      styles.modalScoreVal,
+                      {
+                        color:
+                          selectedRecord.riskScore >= 0.70
+                            ? Colors.error
+                            : selectedRecord.riskScore >= 0.40
+                            ? Colors.warning
+                            : Colors.success,
+                      },
+                    ]}>
+                    {Math.round(selectedRecord.riskScore * 100)}% Risk Assessment
+                  </Text>
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalExplainBtn, ]}
+                  onPress={() => handleExplainRecord(selectedRecord)}>
+                  <Icon name="Bot" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.modalExplainBtnText}>Ask AI Assistant to Explain</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
+  screenHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.screenHorizontal,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  headerTitle: {
-    fontSize: 24,
+  headerLeft: {},
+  screenTitle: {
+    fontSize: 22,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
     letterSpacing: -0.3,
   },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
+  screenSubtitle: {
+    fontSize: 12,
+    color: Colors.textTertiary,
     marginTop: 2,
   },
   clearBtn: {
-    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 69, 69, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 69, 69, 0.3)',
+  },
+  clearBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.error,
   },
 
-  // Filter Tabs
-  filterRow: {
+  // Search
+  searchContainer: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.screenHorizontal,
-    marginVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#030712',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
+    paddingHorizontal: 12,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    height: 42,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.textPrimary,
+    paddingVertical: 0,
+  },
+
+  // Filters Row
+  filtersRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
     gap: 8,
+    marginBottom: 12,
   },
   filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    flex: 1,
+    backgroundColor: '#0B132B',
+    borderRadius: 10,
+    paddingVertical: 7,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   filterChipActive: {
-    backgroundColor: PRIMARY_COLOR,
+    backgroundColor: '#0066FF',
+    borderColor: 'rgba(0, 240, 255, 0.4)',
   },
   filterChipText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.textTertiary,
   },
   filterChipTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
   },
 
-  // Record List
   listContent: {
-    paddingHorizontal: Spacing.screenHorizontal,
+    paddingHorizontal: 16,
     paddingBottom: Spacing.xxxl,
-    paddingTop: 4,
+    gap: 10,
   },
   recordCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
     padding: 14,
-    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
+  },
+  recordCardThreat: {
+    borderColor: 'rgba(255, 69, 69, 0.35)',
+    backgroundColor: 'rgba(255, 69, 69, 0.05)',
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -359,119 +561,194 @@ const styles = StyleSheet.create({
   sourceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#0B132B',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   sourceText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: PRIMARY_COLOR,
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   timeText: {
-    fontSize: 12,
-    color: '#94A3B8',
+    fontSize: 11,
+    color: Colors.textTertiary,
   },
   previewText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#1E293B',
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.textPrimary,
     marginBottom: 10,
   },
   cardFooterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 8,
   },
   statusIndicatorGroup: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   statusLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   textThreat: {
-    color: '#DC2626',
+    color: Colors.error,
+  },
+  textSuspicious: {
+    color: Colors.warning,
   },
   textClean: {
-    color: '#059669',
-  },
-  scorePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  scorePillThreat: {
-    backgroundColor: '#FEE2E2',
-  },
-  scorePillClean: {
-    backgroundColor: '#D1FAE5',
-  },
-  scorePillText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  scorePillTextThreat: {
-    color: '#DC2626',
-  },
-  scorePillTextClean: {
-    color: '#059669',
-  },
-  cardExplainBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-  },
-  cardExplainText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: PRIMARY_COLOR,
+    color: Colors.success,
   },
 
-  // Empty State
-  centerContainer: {
+  centerBox: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+    marginTop: 10,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    padding: 32,
   },
   emptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#EFF6FF',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(0, 123, 167, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 123, 167, 0.35)',
   },
   emptyTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 8,
+    color: Colors.textPrimary,
+    marginBottom: 6,
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: 12,
+    lineHeight: 18,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    maxWidth: 280,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    paddingBottom: 10,
+  },
+  modalHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  modalScroll: {
+    marginBottom: 14,
+  },
+  modalSection: {
+    marginBottom: 12,
+  },
+  modalSectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textTertiary,
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  modalSectionVal: {
+    fontSize: 12,
+    color: Colors.textPrimary,
+  },
+  modalMessageBox: {
+    backgroundColor: '#0B132B',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalMessageText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: Colors.textPrimary,
+    fontStyle: 'italic',
+  },
+  modalReasonRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 4,
+  },
+  modalReasonText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
+  modalScoreVal: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  modalActions: {
+    borderTopWidth: 1,
+    borderTopColor: '#E4E4E7',
+    paddingTop: 12,
+  },
+  modalExplainBtn: {
+    backgroundColor: '#0066FF',
+    borderRadius: 12,
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
+  },
+  modalExplainBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 

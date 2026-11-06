@@ -101,7 +101,7 @@ describe('Conversational Assistant Client & Workflows', () => {
     });
 
     expect(apiClient.post).toHaveBeenCalledWith('/api/assistant/chat', {
-      message: 'How do I know if a fake is fake?' ? expect.any(String) : expect.any(String),
+      message: expect.any(String),
       mode: 'general_help',
     });
     expect(result.success).toBe(true);

@@ -1,7 +1,8 @@
 /**
- * Modern Button Component
+ * Cyber Button Component — FraudShield
  *
- * Supports primary, secondary, outline, danger, ghost variants.
+ * Supports primary (electric blue), cyan (cyber accent), secondary (dark card),
+ * outline, danger, ghost variants.
  * Features left/right Lucide icon support, size scaling, loading spinner,
  * and tactile press feedback.
  */
@@ -16,12 +17,14 @@ import {
   TextStyle,
   View,
 } from 'react-native';
-import {Colors, Typography, Spacing, Shadows} from '../theme/theme';
-import Icon, {IconName} from './Icon';
+import { Colors, Typography, Spacing, Shadows } from '../theme/theme';
+import Icon, { IconName } from './Icon';
 
 export type ButtonVariant =
   | 'primary'
+  | 'cyan'
   | 'secondary'
+  | 'neonRose'
   | 'outline'
   | 'danger'
   | 'ghost';
@@ -63,7 +66,8 @@ const Button: React.FC<ButtonProps> = ({
     styles.base,
     sizeStyles[size].button,
     variantStyles[variant]?.button,
-    variant === 'primary' && Shadows.sm,
+    variant === 'primary' && Shadows.glowBlue,
+    variant === 'cyan' && Shadows.glowCyan,
     fullWidth && styles.fullWidth,
     isDisabled && styles.disabled,
     isDisabled && variant === 'primary' && styles.disabledPrimary,
@@ -83,10 +87,14 @@ const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case 'primary':
       case 'danger':
-        return Colors.white;
+      case 'neonRose':
+        return '#FFFFFF';
+      case 'cyan':
+        return '#0A0A0A';
       case 'secondary':
+        return Colors.textPrimary;
       case 'ghost':
-        return Colors.primary;
+        return Colors.primaryLight;
       case 'outline':
         return Colors.textPrimary;
       default:
@@ -95,9 +103,11 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   const spinnerColor =
-    variant === 'outline' || variant === 'ghost' || variant === 'secondary'
-      ? Colors.primary
-      : Colors.white;
+    variant === 'cyan'
+      ? '#0A0A0A'
+      : variant === 'outline' || variant === 'ghost'
+      ? Colors.primaryLight
+      : '#FFFFFF';
 
   const iconSize = size === 'sm' ? 16 : size === 'lg' ? 22 : 18;
 
@@ -106,10 +116,10 @@ const Button: React.FC<ButtonProps> = ({
       style={buttonStyles}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.8}
+      activeOpacity={0.82}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || title}
-      accessibilityState={{disabled: isDisabled, busy: loading}}>
+      accessibilityState={{ disabled: isDisabled, busy: loading }}>
       {loading ? (
         <ActivityIndicator size="small" color={spinnerColor} />
       ) : (
@@ -139,7 +149,7 @@ const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: Spacing.borderRadius.md,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -161,12 +171,15 @@ const styles = StyleSheet.create({
   text: {
     ...Typography.styles.button,
     textAlign: 'center',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   disabledPrimary: {
-    backgroundColor: Colors.disabled,
+    backgroundColor: 'rgba(0, 123, 167, 0.15)',
+    borderColor: 'rgba(0, 123, 167, 0.25)',
   },
   disabledText: {
     color: Colors.textTertiary,
@@ -175,72 +188,94 @@ const styles = StyleSheet.create({
 
 const sizeStyles: Record<
   ButtonSize,
-  {button: ViewStyle; text: TextStyle}
+  { button: ViewStyle; text: TextStyle }
 > = {
   sm: {
     button: {
-      paddingVertical: Spacing.sm,
-      paddingHorizontal: Spacing.md,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
       minHeight: 38,
-      borderRadius: Spacing.borderRadius.sm,
+      borderRadius: 10,
     },
     text: {
-      ...Typography.styles.buttonSmall,
+      fontSize: 13,
+      fontWeight: '600',
     },
   },
   md: {
     button: {
-      paddingVertical: Spacing.buttonVertical,
-      paddingHorizontal: Spacing.buttonHorizontal,
-      minHeight: Spacing.buttonHeight,
-      borderRadius: Spacing.borderRadius.md,
+      paddingVertical: 13,
+      paddingHorizontal: 20,
+      minHeight: 48,
+      borderRadius: 12,
     },
     text: {
-      ...Typography.styles.button,
+      fontSize: 15,
+      fontWeight: '700',
     },
   },
   lg: {
     button: {
-      paddingVertical: Spacing.lg,
-      paddingHorizontal: Spacing.xxl,
-      minHeight: 56,
-      borderRadius: Spacing.borderRadius.lg,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      minHeight: 54,
+      borderRadius: 14,
     },
     text: {
       fontSize: 16,
-      fontWeight: '600',
+      fontWeight: '700',
     },
   },
 };
 
 const variantStyles: Record<
   ButtonVariant,
-  {button: ViewStyle; text: TextStyle}
+  { button: ViewStyle; text: TextStyle }
 > = {
   primary: {
     button: {
       backgroundColor: Colors.primary,
       borderWidth: 1,
-      borderColor: Colors.primary,
+      borderColor: 'rgba(0, 123, 167, 0.6)',
     },
     text: {
-      color: Colors.textInverse,
+      color: '#FFFFFF',
+    },
+  },
+  cyan: {
+    button: {
+      backgroundColor: Colors.secondary,
+      borderWidth: 1,
+      borderColor: 'rgba(0, 123, 167, 0.4)',
+    },
+    text: {
+      color: '#0A0A0A',
+    },
+  },
+  neonRose: {
+    button: {
+      backgroundColor: '#FF2D95',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 45, 149, 0.6)',
+    },
+    text: {
+      color: '#FFFFFF',
     },
   },
   secondary: {
     button: {
-      backgroundColor: Colors.primaryFaded,
+      backgroundColor: Colors.cardElevated,
       borderWidth: 1,
-      borderColor: Colors.primaryBorder,
+      borderColor: Colors.border,
     },
     text: {
-      color: Colors.primary,
+      color: Colors.textPrimary,
     },
   },
   outline: {
     button: {
-      backgroundColor: Colors.white,
-      borderWidth: 1.5,
+      backgroundColor: 'transparent',
+      borderWidth: 1.2,
       borderColor: Colors.border,
     },
     text: {
@@ -251,10 +286,10 @@ const variantStyles: Record<
     button: {
       backgroundColor: Colors.error,
       borderWidth: 1,
-      borderColor: Colors.error,
+      borderColor: '#F87171',
     },
     text: {
-      color: Colors.textInverse,
+      color: '#FFFFFF',
     },
   },
   ghost: {
@@ -263,7 +298,7 @@ const variantStyles: Record<
       borderWidth: 0,
     },
     text: {
-      color: Colors.primary,
+      color: Colors.primaryLight,
     },
   },
 };

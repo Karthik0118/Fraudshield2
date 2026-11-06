@@ -1,184 +1,201 @@
 /**
- * Fraud Help Assistant Card — FraudShield
- *
- * Prominent home dashboard entry point for the context-aware Conversational AI assistant.
- * Allows users to assess potential scams, follow guided recovery procedures (Helpline 1930 / cybercrime.gov.in),
- * and ask safety questions with one-tap prompt chips.
+ * FraudHelpAssistantCard — AI Security Advisor card
  */
 
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import Colors from '../../../theme/colors';
 import Icon from '../../../components/Icon';
-import { Colors, Shadows, Spacing } from '../../../theme/theme';
-
-const PRIMARY_COLOR = '#3a86ff';
 
 interface FraudHelpAssistantCardProps {
   onOpenAssistant: () => void;
   onSelectPrompt: (prompt: string) => void;
 }
 
-const STARTING_PROMPTS = [
-  'I clicked a suspicious link.',
-  'I shared an OTP or password.',
-  'I sent money to a scammer.',
-  'I installed a suspicious app.',
-  'How can I report a scam?',
-  'How can I check if a message is genuine?',
+const PROMPTS = [
+  'How do I identify scam messages?',
+  'I clicked a suspicious link',
+  'How to protect my bank account?',
 ];
 
-export const FraudHelpAssistantCard: React.FC<FraudHelpAssistantCardProps> = ({
+const FraudHelpAssistantCard: React.FC<FraudHelpAssistantCardProps> = ({
   onOpenAssistant,
   onSelectPrompt,
 }) => {
+  const pulseAnim = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.8,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, []);
+
   return (
-    <View style={[styles.card, Shadows.card]}>
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <View style={styles.iconContainer}>
-          <Icon name="Bot" size={20} color={PRIMARY_COLOR} strokeWidth={2.4} />
+    <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.headerRow}
+        onPress={onOpenAssistant}
+        activeOpacity={0.8}>
+        <View style={styles.aiAvatarContainer}>
+          <Animated.View
+            style={[styles.aiGlow, { opacity: pulseAnim }]}
+          />
+          <View style={styles.aiAvatar}>
+            <Icon name="Bot" size={20} color={Colors.secondary} strokeWidth={2.2} />
+          </View>
         </View>
 
-        <View style={styles.titleContainer}>
-          <View style={styles.titleBadgeRow}>
-            <Text style={styles.title}>Fraud Help Assistant</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>24/7 Safety</Text>
+        <View style={styles.textSection}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>AI Security Advisor</Text>
+            <View style={styles.aiBadge}>
+              <Text style={styles.aiBadgeText}>AI</Text>
             </View>
           </View>
           <Text style={styles.subtitle}>
-            Guided scam triage, instant recovery steps, and incident guidance.
+            Ask about scams, fraud protection, or recovery steps
           </Text>
         </View>
-      </View>
 
-      {/* Suggested Starting Prompts */}
-      <Text style={styles.promptsHeading}>Common Questions & Emergency Help:</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.promptsScroll}>
-        {STARTING_PROMPTS.map((prompt, idx) => (
+        <View style={styles.arrowBox}>
+          <Icon
+            name="ChevronRight"
+            size={16}
+            color={Colors.secondary}
+            strokeWidth={2.4}
+          />
+        </View>
+      </TouchableOpacity>
+
+      {/* Quick prompt chips */}
+      <View style={styles.promptsContainer}>
+        {PROMPTS.map((prompt, index) => (
           <TouchableOpacity
-            key={idx}
+            key={index}
             style={styles.promptChip}
-            activeOpacity={0.8}
             onPress={() => onSelectPrompt(prompt)}
-            accessibilityRole="button"
-            accessibilityLabel={prompt}>
-            <Text style={styles.promptChipText}>{prompt}</Text>
+            activeOpacity={0.7}>
+            <Text style={styles.promptText} numberOfLines={1}>
+              {prompt}
+            </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
-
-      {/* Action Button */}
-      <TouchableOpacity
-        style={styles.openButton}
-        onPress={onOpenAssistant}
-        activeOpacity={0.88}
-        accessibilityRole="button"
-        accessibilityLabel="Open Fraud Help Assistant">
-        <Text style={styles.openButtonText}>Start Conversation with Assistant</Text>
-        <Icon name="ArrowRight" size={16} color="#FFFFFF" strokeWidth={2.4} style={{ marginLeft: 6 }} />
-      </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderRadius: 16,
-    padding: 16,
-    marginVertical: Spacing.sm,
-    borderColor: '#E2E8F0',
     borderWidth: 1,
+    borderColor: 'rgba(255, 45, 149, 0.2)',
+    marginBottom: 16,
+    overflow: 'hidden',
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    padding: 14,
+    gap: 12,
   },
-  titleContainer: {
+  aiAvatarContainer: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiGlow: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 45, 149, 0.15)',
+  },
+  aiAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 45, 149, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 149, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textSection: {
     flex: 1,
   },
-  titleBadgeRow: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 2,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  badge: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: PRIMARY_COLOR,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    lineHeight: 18,
-    marginTop: 3,
-  },
-  promptsHeading: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    color: '#94A3B8',
-    letterSpacing: 0.4,
-    marginTop: 14,
-    marginBottom: 8,
-  },
-  promptsScroll: {
-    paddingRight: 8,
-    paddingBottom: 4,
-  },
-  promptChip: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  promptChipText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#334155',
-  },
-  openButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 12,
-    height: 44,
-    marginTop: 12,
-  },
-  openButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.white,
+  },
+  aiBadge: {
+    backgroundColor: 'rgba(255, 45, 149, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 149, 0.3)',
+  },
+  aiBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.secondary,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  arrowBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 45, 149, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 149, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promptsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+  promptChip: {
+    backgroundColor: 'rgba(255, 45, 149, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 149, 0.15)',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  promptText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.secondary,
   },
 });
 

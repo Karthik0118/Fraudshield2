@@ -128,7 +128,7 @@ const DEFAULT_RESULT_ECOMMERCE: NetworkAnalysisResultData = {
 
 export const NetworkAnalysisScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<any>(null);
 
   // Screen State Management
   const [selectedFile, setSelectedFile] = useState<SelectedTransactionFile | null>(null);
@@ -153,7 +153,6 @@ export const NetworkAnalysisScreen: React.FC = () => {
   const handleRemoveFile = () => {
     setSelectedFile(null);
     setScreenState('EMPTY');
-    setErrorMessage(null);
     setAnalysisResult(null);
     setGraphNodes(undefined);
     setGraphEdges(undefined);
@@ -162,17 +161,16 @@ export const NetworkAnalysisScreen: React.FC = () => {
   };
 
   const handleBrowseCustomFile = () => {
-    // UI placeholder file selector: shows alert with options
     Alert.alert(
-      'Select Transaction Ledger',
-      'Choose a sample dataset or simulated transaction batch:',
+      'Select Data Format',
+      'Choose how you would like to provide transaction data:',
       [
         {
-          text: 'Mule Ring Pattern (CSV)',
+          text: 'Load Mule Ring Sample',
           onPress: () => handleSelectFile(SAMPLE_DATASETS[0]),
         },
         {
-          text: 'E-Commerce Batch (CSV)',
+          text: 'Load E-Commerce Sample',
           onPress: () => handleSelectFile(SAMPLE_DATASETS[1]),
         },
         {
@@ -183,10 +181,9 @@ export const NetworkAnalysisScreen: React.FC = () => {
     );
   };
 
-  // Start GCN Analysis Pipeline via backend ML API
   const handleStartAnalysis = async () => {
     if (!selectedFile) {
-      setErrorMessage('Please select or upload a transaction dataset first.');
+      setErrorMessage('Please upload or select a transaction dataset first.');
       return;
     }
 
@@ -195,47 +192,41 @@ export const NetworkAnalysisScreen: React.FC = () => {
     setAnalysisStage(1);
     setAnalysisProgress(15);
 
-    // Scroll smoothly to progress card
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: 180, animated: true });
-    }, 100);
-
+    // Staged progress animation for realism
     const stageTimer2 = setTimeout(() => {
       setAnalysisStage(2);
-      setAnalysisProgress(40);
-    }, 600);
+      setAnalysisProgress(45);
+    }, 900);
 
     const stageTimer3 = setTimeout(() => {
       setAnalysisStage(3);
-      setAnalysisProgress(75);
-    }, 1200);
+      setAnalysisProgress(78);
+    }, 2000);
 
     try {
-      // Execute live GCN analysis on the backend (Node.js -> FastAPI GCN)
-      const transactionsPayload =
-        selectedFile.sampleData && selectedFile.sampleData.length > 0
-          ? selectedFile.sampleData
-          : [
-              { source: 'ACC-8821', target: 'ACC-1049', amount: 84500, timestamp: '10:14:22', type: 'IMPS' },
-              { source: 'ACC-8821', target: 'ACC-3312', amount: 95000, timestamp: '10:15:05', type: 'IMPS' },
-              { source: 'ACC-1049', target: 'ACC-5520', amount: 80000, timestamp: '10:18:40', type: 'UPI' },
-              { source: 'ACC-3312', target: 'ACC-5520', amount: 92000, timestamp: '10:19:12', type: 'UPI' },
-              { source: 'ACC-4401', target: 'ACC-2210', amount: 1200, timestamp: '10:21:00', type: 'UPI' },
-            ];
+      // Map transactions to API payload format
+      const payloadTransactions = selectedFile.sampleData.map((row) => {
+        const rawAmount = parseFloat(row.amount.replace(/[^0-9.]/g, '')) || 0;
+        return {
+          source: row.source,
+          target: row.target,
+          amount: rawAmount,
+          timestamp: row.timestamp,
+          channel: row.type || 'UPI',
+        };
+      });
 
-      const res = await fraudApi.analyzeTransactionNetwork(
-        transactionsPayload,
-        selectedFile.name,
-      );
+      // Execute live GCN analysis API call
+      const response = await fraudApi.analyzeNetwork(payloadTransactions);
 
       clearTimeout(stageTimer2);
       clearTimeout(stageTimer3);
 
-      setAnalysisStage(4);
-      setAnalysisProgress(100);
+      if (response && response.success && response.data) {
+        const d = response.data;
+        setAnalysisStage(4);
+        setAnalysisProgress(100);
 
-      if (res && res.success && res.data) {
-        const d = res.data;
         const liveResult: NetworkAnalysisResultData = {
           riskScore: d.risk_score,
           riskLevel: d.risk_level,
@@ -310,7 +301,7 @@ export const NetworkAnalysisScreen: React.FC = () => {
         <View style={styles.headerContainer}>
           <View style={styles.badgeRow}>
             <View style={styles.badge}>
-              <Icon name="Activity" size={13} color="#3a86ff" strokeWidth={2.4} />
+              <Icon name="Activity" size={13} color={Colors.primary} strokeWidth={2.4} />
               <Text style={styles.badgeText}>Graph Convolutional Network</Text>
             </View>
             <View style={styles.versionBadge}>
@@ -396,7 +387,7 @@ export const NetworkAnalysisScreen: React.FC = () => {
           <View style={[styles.infoCard, Shadows.card]}>
             <View style={styles.infoHeader}>
               <View style={styles.infoIconBox}>
-                <Icon name="ShieldCheck" size={20} color="#3a86ff" strokeWidth={2.4} />
+                <Icon name="ShieldCheck" size={20} color={Colors.primary} strokeWidth={2.4} />
               </View>
               <Text style={styles.infoTitle}>How Network Fraud Detection Works</Text>
             </View>
@@ -445,7 +436,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.screenHorizontal,
+    paddingHorizontal: 16,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.xxxxl,
   },
@@ -462,20 +453,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(0, 123, 167, 0.15)',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: 'rgba(0, 240, 255, 0.18)',
   },
   badgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#1D4ED8',
+    color: '#FFFFFF',
   },
   versionBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#0B132B',
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingVertical: 3,
     paddingHorizontal: 6,
     borderRadius: 6,
@@ -483,18 +476,18 @@ const styles = StyleSheet.create({
   versionBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#475569',
+    color: Colors.textTertiary,
   },
   screenTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0F172A',
+    color: Colors.textPrimary,
     letterSpacing: -0.4,
     marginBottom: 6,
   },
   screenDescription: {
     fontSize: 13,
-    color: '#64748B',
+    color: Colors.textSecondary,
     lineHeight: 18,
   },
   actionButtonContainer: {
@@ -502,18 +495,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   analyzeButton: {
-    backgroundColor: '#3a86ff',
-    borderColor: '#3a86ff',
+    backgroundColor: Colors.primary,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
     borderRadius: 14,
-    shadowColor: '#3a86ff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
+    },
   buttonSubtext: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: Colors.textTertiary,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -521,11 +509,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   infoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     marginTop: Spacing.xs,
   },
   infoHeader: {
@@ -538,14 +526,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(0, 123, 167, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   infoTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
   },
   featurePointsList: {
     gap: 12,
@@ -559,7 +549,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#3a86ff',
+    backgroundColor: Colors.primary,
     marginTop: 6,
   },
   featurePointTextContainer: {
@@ -568,12 +558,12 @@ const styles = StyleSheet.create({
   featurePointTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E293B',
+    color: Colors.textPrimary,
     marginBottom: 2,
   },
   featurePointDesc: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textSecondary,
     lineHeight: 16,
   },
 });

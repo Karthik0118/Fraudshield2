@@ -1,11 +1,16 @@
 /**
- * Modern Register Screen
+ * Premium Cybersecurity Register Screen — FraudShield
  *
- * Polished registration experience with Lucide input icons, real-time
- * password strength checklist, card-based layout, and validation.
+ * Design features:
+ * - Ultra-deep dark cybersecurity background (#0A0A0A)
+ * - Modern cybersecurity card (#14141A) with border
+ * - Real-time password strength meter (Weak / Moderate / Robust) with visual progress bar
+ * - High-contrast inputs with Lucide icons
+ * - Cerulean Blue / Neon Rose accented buttons and links
+ * - Clean error presentation and full auth validation
  */
 
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,15 +19,17 @@ import {
   Platform,
   TouchableOpacity,
   StyleSheet,
+  StatusBar,
 } from 'react-native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {AuthStackParamList} from '../../navigation/AuthNavigator';
-import {useAuth} from '../../context/AuthContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import ErrorMessage from '../../components/ErrorMessage';
 import Icon from '../../components/Icon';
-import {Colors, Typography, Spacing, Shadows} from '../../theme/theme';
+import { Colors, Typography, Spacing, Shadows } from '../../theme/theme';
 import {
   validateName,
   validateEmail,
@@ -30,7 +37,7 @@ import {
   validatePassword,
   validatePasswordMatch,
 } from '../../utils/validation';
-import {extractApiError} from '../../utils/errorHandler';
+import { extractApiError } from '../../utils/errorHandler';
 
 type RegisterScreenProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'>;
@@ -44,8 +51,8 @@ interface FieldErrors {
   confirmPassword?: string;
 }
 
-const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
-  const {register} = useAuth();
+const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
+  const { register } = useAuth();
 
   // Form state
   const [name, setName] = useState('');
@@ -60,13 +67,12 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const clearFieldError = (field: keyof FieldErrors) => {
-    setFieldErrors(prev => ({...prev, [field]: undefined}));
+    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
   const handleRegister = async () => {
     setError('');
 
-    // Validate all fields
     const errors: FieldErrors = {};
     let isValid = true;
 
@@ -112,12 +118,12 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
       const apiError = extractApiError(err);
       if (apiError.validationErrors) {
         const fieldMap: FieldErrors = {};
-        apiError.validationErrors.forEach(ve => {
+        apiError.validationErrors.forEach((ve) => {
           if (['name', 'email', 'phone', 'password'].includes(ve.field)) {
             (fieldMap as any)[ve.field] = ve.message;
           }
         });
-        setFieldErrors(prev => ({...prev, ...fieldMap}));
+        setFieldErrors((prev) => ({ ...prev, ...fieldMap }));
       }
       setError(apiError.message);
     } finally {
@@ -125,289 +131,395 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({navigation}) => {
     }
   };
 
+  // Password criteria computation
   const isMinLength = password.length >= 6;
   const hasNumber = /\d/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        {/* ─── Header ───────────────────────────────────────────── */}
-        <View style={styles.headerSection}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
-            accessibilityRole="button"
-            accessibilityLabel="Back to sign in">
-            <Icon name="ChevronLeft" size={20} color={Colors.textSecondary} />
-            <Text style={styles.backText}>Sign In</Text>
-          </TouchableOpacity>
-          <Text style={styles.heading}>Create Account</Text>
-          <Text style={styles.subheading}>
-            Join FraudShield to protect your transactions
-          </Text>
-        </View>
+  // Strength score: 0 to 3
+  const strengthScore =
+    (isMinLength ? 1 : 0) + (hasNumber ? 1 : 0) + (hasSpecial && password.length >= 8 ? 1 : 0);
 
-        {/* ─── Form Card ────────────────────────────────────────── */}
-        <View style={[styles.card, Shadows.card]}>
-          {/* ─── Error Banner ──────────────────────────────────── */}
+  const getStrengthLabel = () => {
+    if (!password) return { label: 'REQUIRED', color: Colors.textTertiary, width: '0%' };
+    if (strengthScore <= 1) return { label: 'WEAK', color: Colors.error, width: '33%' };
+    if (strengthScore === 2) return { label: 'MODERATE', color: Colors.warning, width: '66%' };
+    return { label: 'ROBUST', color: Colors.success, width: '100%' };
+  };
+
+  const strength = getStrengthLabel();
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+      <StatusBar barStyle="light-content" />
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+              accessibilityRole="button"
+              accessibilityLabel="Back to sign in">
+              <Icon name="ChevronLeft" size={16} color={Colors.primaryLight} />
+              <Text style={styles.backText}>Sign In</Text>
+            </TouchableOpacity>
+
+            <View style={styles.titleRow}>
+              <Text style={styles.heading}>Enroll Operator</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>ENCRYPTED</Text>
+              </View>
+            </View>
+            <Text style={styles.subheading}>
+              Deploy AI-powered message inspection and threat interception.
+            </Text>
+          </View>
+
+          {/* Error Banner */}
           {error ? (
             <ErrorMessage message={error} onDismiss={() => setError('')} />
           ) : null}
 
-          {/* ─── Form Fields ───────────────────────────────────── */}
-          <Input
-            label="Full Name"
-            placeholder="John Doe"
-            value={name}
-            onChangeText={text => {
-              setName(text);
-              clearFieldError('name');
-            }}
-            error={fieldErrors.name}
-            leftIcon="User"
-            autoCapitalize="words"
-            returnKeyType="next"
-          />
+          {/* Form Card */}
+          <View style={styles.card}>
+            <Input
+              label="Full Name"
+              placeholder="Alex Walker"
+              value={name}
+              onChangeText={(text) => {
+                setName(text);
+                clearFieldError('name');
+              }}
+              error={fieldErrors.name}
+              leftIcon="User"
+              autoCapitalize="words"
+              returnKeyType="next"
+              focusColor={Colors.primary}
+            />
 
-          <Input
-            label="Email Address"
-            placeholder="you@example.com"
-            value={email}
-            onChangeText={text => {
-              setEmail(text);
-              clearFieldError('email');
-            }}
-            error={fieldErrors.email}
-            leftIcon="Mail"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
-          />
+            <Input
+              label="Email Address"
+              placeholder="alex@domain.com"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                clearFieldError('email');
+              }}
+              error={fieldErrors.email}
+              leftIcon="Mail"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              focusColor={Colors.primary}
+            />
 
-          <Input
-            label="Phone Number"
-            placeholder="+91 98765 43210"
-            value={phone}
-            onChangeText={text => {
-              setPhone(text);
-              clearFieldError('phone');
-            }}
-            error={fieldErrors.phone}
-            leftIcon="Phone"
-            keyboardType="phone-pad"
-            returnKeyType="next"
-          />
+            <Input
+              label="Mobile Number (SMS Protection)"
+              placeholder="+91 98765 43210"
+              value={phone}
+              onChangeText={(text) => {
+                setPhone(text);
+                clearFieldError('phone');
+              }}
+              error={fieldErrors.phone}
+              leftIcon="Phone"
+              keyboardType="phone-pad"
+              returnKeyType="next"
+              focusColor={Colors.primary}
+            />
 
-          <Input
-            label="Password"
-            placeholder="Create password"
-            value={password}
-            onChangeText={text => {
-              setPassword(text);
-              clearFieldError('password');
-            }}
-            error={fieldErrors.password}
-            leftIcon="Lock"
-            isPassword
-            returnKeyType="next"
-          />
+            <Input
+              label="Password"
+              placeholder="Minimum 6 characters"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                clearFieldError('password');
+              }}
+              error={fieldErrors.password}
+              leftIcon="Lock"
+              isPassword
+              returnKeyType="next"
+              focusColor={Colors.primary}
+            />
 
-          <Input
-            label="Confirm Password"
-            placeholder="Re-enter password"
-            value={confirmPassword}
-            onChangeText={text => {
-              setConfirmPassword(text);
-              clearFieldError('confirmPassword');
-            }}
-            error={fieldErrors.confirmPassword}
-            leftIcon="Lock"
-            isPassword
-            returnKeyType="done"
-            onSubmitEditing={handleRegister}
-          />
+            {/* Password Strength Meter */}
+            {password.length > 0 && (
+              <View style={styles.strengthWrapper}>
+                <View style={styles.strengthHeader}>
+                  <Text style={styles.strengthText}>CRYPTO STRENGTH</Text>
+                  <Text style={[styles.strengthValue, { color: strength.color }]}>
+                    {strength.label}
+                  </Text>
+                </View>
+                <View style={styles.strengthTrack}>
+                  <View
+                    style={[
+                      styles.strengthBar,
+                      { width: strength.width as any, backgroundColor: strength.color },
+                    ]}
+                  />
+                </View>
+              </View>
+            )}
 
-          {/* ─── Password Checklist ─────────────────────────────── */}
-          <View style={styles.requirementsContainer}>
-            <Text style={styles.requirementsTitle}>Password criteria</Text>
-            
-            <View style={styles.requirementRow}>
-              <Icon
-                name={isMinLength ? 'CheckCircle2' : 'Clock'}
-                size={14}
-                color={isMinLength ? Colors.success : Colors.textTertiary}
-                style={{marginRight: 6}}
-              />
-              <Text
-                style={[
-                  styles.requirementText,
-                  isMinLength && styles.requirementMetText,
-                ]}>
-                At least 6 characters
-              </Text>
-            </View>
+            <Input
+              label="Confirm Password"
+              placeholder="Repeat password"
+              value={confirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                clearFieldError('confirmPassword');
+              }}
+              error={fieldErrors.confirmPassword}
+              leftIcon="LockKeyhole"
+              isPassword
+              returnKeyType="done"
+              onSubmitEditing={handleRegister}
+              focusColor={Colors.primary}
+            />
 
-            <View style={styles.requirementRow}>
-              <Icon
-                name={hasNumber ? 'CheckCircle2' : 'Clock'}
-                size={14}
-                color={hasNumber ? Colors.success : Colors.textTertiary}
-                style={{marginRight: 6}}
-              />
-              <Text
-                style={[
-                  styles.requirementText,
-                  hasNumber && styles.requirementMetText,
-                ]}>
-                Contains at least one number
-              </Text>
-            </View>
-
-            {confirmPassword.length > 0 && (
+            {/* Password Criteria Checklist */}
+            <View style={styles.requirementsContainer}>
+              <Text style={styles.requirementsTitle}>Security Requirements</Text>
+              
               <View style={styles.requirementRow}>
                 <Icon
-                  name={passwordsMatch ? 'CheckCircle2' : 'AlertCircle'}
+                  name={isMinLength ? 'CheckCircle2' : 'Clock'}
                   size={14}
-                  color={passwordsMatch ? Colors.success : Colors.error}
-                  style={{marginRight: 6}}
+                  color={isMinLength ? Colors.success : Colors.textTertiary}
+                  style={{ marginRight: 8 }}
                 />
                 <Text
                   style={[
                     styles.requirementText,
-                    passwordsMatch && styles.requirementMetText,
-                    !passwordsMatch && styles.requirementFailText,
+                    isMinLength && styles.requirementMetText,
                   ]}>
-                  {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
+                  At least 6 characters
                 </Text>
               </View>
-            )}
+
+              <View style={styles.requirementRow}>
+                <Icon
+                  name={hasNumber ? 'CheckCircle2' : 'Clock'}
+                  size={14}
+                  color={hasNumber ? Colors.success : Colors.textTertiary}
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  style={[
+                    styles.requirementText,
+                    hasNumber && styles.requirementMetText,
+                  ]}>
+                  Contains numerical character
+                </Text>
+              </View>
+
+              {confirmPassword.length > 0 && (
+                <View style={styles.requirementRow}>
+                  <Icon
+                    name={passwordsMatch ? 'CheckCircle2' : 'AlertCircle'}
+                    size={14}
+                    color={passwordsMatch ? Colors.success : Colors.error}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      passwordsMatch && styles.requirementMetText,
+                      !passwordsMatch && styles.requirementFailText,
+                    ]}>
+                    {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Submit Button */}
+            <Button
+              title="INITIALIZE CYBER DEFENSE"
+              onPress={handleRegister}
+              loading={loading}
+              variant="primary"
+              size="lg"
+              style={styles.registerButton}
+            />
           </View>
 
-          {/* ─── Register Button ───────────────────────────────── */}
-          <Button
-            title="Create Account"
-            onPress={handleRegister}
-            loading={loading}
-            rightIcon="ArrowRight"
-            style={styles.registerButton}
-          />
-        </View>
-
-        {/* ─── Login Link ────────────────────────────────────────── */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            disabled={loading}
-            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Text style={styles.linkText}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {/* Footer: Sign In Link */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already enrolled as an operator? </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Login')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in">
+              <Text style={styles.linkText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
   },
+  container: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.screenHorizontal,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xxxl,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
   },
-  headerSection: {
-    marginBottom: Spacing.xl,
+  header: {
+    marginBottom: 20,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.md,
-    alignSelf: 'flex-start',
+    marginBottom: 16,
+    gap: 4,
   },
   backText: {
     ...Typography.styles.bodyMedium,
-    color: Colors.textSecondary,
-    marginLeft: 2,
+    color: Colors.primaryLight,
+    fontWeight: '600',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 6,
   },
   heading: {
-    ...Typography.styles.heading1,
+    fontSize: 26,
+    fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: Spacing.xxs,
+    letterSpacing: -0.3,
+  },
+  badge: {
+    backgroundColor: 'rgba(0, 123, 167, 0.15)',
+    borderColor: 'rgba(0, 123, 167, 0.35)',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    color: Colors.primaryLight,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
   },
   subheading: {
-    ...Typography.styles.body,
+    fontSize: 14,
+    lineHeight: 20,
     color: Colors.textSecondary,
   },
   card: {
-    backgroundColor: Colors.white,
-    borderRadius: Spacing.borderRadius.xl,
-    padding: Spacing.cardPadding,
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    padding: 20,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginBottom: Spacing.xl,
+    marginBottom: 20,
+    ...Shadows.card,
+  },
+  strengthWrapper: {
+    marginBottom: 16,
+    marginTop: -4,
+  },
+  strengthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  strengthText: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  strengthValue: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  strengthTrack: {
+    height: 4,
+    backgroundColor: '#14141A',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  strengthBar: {
+    height: '100%',
+    borderRadius: 2,
   },
   requirementsContainer: {
-    backgroundColor: Colors.surfaceSecondary,
-    padding: Spacing.md,
-    borderRadius: Spacing.borderRadius.md,
-    marginBottom: Spacing.xl,
+    backgroundColor: '#14141A',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
   },
   requirementsTitle: {
-    ...Typography.styles.small,
-    fontWeight: Typography.weights.semibold,
+    fontSize: 11,
+    fontWeight: '700',
     color: Colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: Spacing.xs,
+    marginBottom: 8,
   },
   requirementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.xs,
+    marginTop: 6,
   },
   requirementText: {
-    ...Typography.styles.caption,
+    fontSize: 12,
     color: Colors.textTertiary,
   },
   requirementMetText: {
-    color: Colors.successDark,
-    fontWeight: Typography.weights.medium,
+    color: Colors.success,
+    fontWeight: '600',
   },
   requirementFailText: {
-    color: Colors.errorDark,
-    fontWeight: Typography.weights.medium,
+    color: Colors.error,
+    fontWeight: '600',
   },
   registerButton: {
-    marginTop: Spacing.xs,
+    marginTop: 4,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: Spacing.lg,
+    paddingBottom: 16,
   },
   footerText: {
-    ...Typography.styles.body,
+    fontSize: 14,
     color: Colors.textSecondary,
   },
   linkText: {
-    ...Typography.styles.bodySemibold,
-    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FF2D95',
   },
 });
 

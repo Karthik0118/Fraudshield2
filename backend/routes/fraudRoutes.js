@@ -7,6 +7,7 @@ const {
   analyzeMessage,
   analyzeNetworkTransactions,
   extractBankStatementTransactions,
+  uploadAndParsePdf,
 } = require("../controllers/fraudController");
 const { protect } = require("../middlewares/authMiddleware");
 const { body } = require("express-validator");
@@ -62,5 +63,9 @@ router.post(
   upload.single("statement"),
   extractBankStatementTransactions
 );
+
+// Bank Statement PDF parsing route
+// ---------------------------------------------------------------------------
+router.post("/upload-pdf", uploadAndParsePdf);
 
 module.exports = router;

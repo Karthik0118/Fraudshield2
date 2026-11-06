@@ -1,11 +1,11 @@
 /**
- * Modern Edit Profile Screen
+ * Modern Edit Profile Screen — FraudShield Cyber Edition
  *
  * Polished form for updating user profile info (name, phone).
- * Displays read-only email with security lock badge.
+ * Displays read-only email with security lock badge and avatar presentation.
  */
 
-import React, {useState, useCallback} from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,20 +14,23 @@ import {
   Platform,
   StyleSheet,
   Alert,
+  StatusBar,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import {useAuth} from '../../context/AuthContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 import authApi from '../../api/authApi';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import ErrorMessage from '../../components/ErrorMessage';
 import Icon from '../../components/Icon';
-import {Colors, Typography, Spacing, Shadows} from '../../theme/theme';
-import {validateName, validatePhone} from '../../utils/validation';
-import {extractApiError} from '../../utils/errorHandler';
+import UserAvatar from '../../components/UserAvatar';
+import { Colors, Typography, Spacing, Shadows } from '../../theme/theme';
+import { validateName, validatePhone } from '../../utils/validation';
+import { extractApiError } from '../../utils/errorHandler';
 
 const EditProfileScreen: React.FC = () => {
-  const {user, updateStoredUser} = useAuth();
+  const { user, updateStoredUser } = useAuth();
   const navigation = useNavigation();
 
   // Pre-fill with current profile data
@@ -43,7 +46,7 @@ const EditProfileScreen: React.FC = () => {
   }>({});
 
   const validate = (): boolean => {
-    const errors: {name?: string; phone?: string} = {};
+    const errors: { name?: string; phone?: string } = {};
     let isValid = true;
 
     if (name.trim()) {
@@ -62,9 +65,8 @@ const EditProfileScreen: React.FC = () => {
       }
     }
 
-    // At least one field should be changed
     if (name.trim() === user?.name && phone.trim() === user?.phone) {
-      setError('No changes detected');
+      setError('No profile modifications detected.');
       return false;
     }
 
@@ -80,7 +82,7 @@ const EditProfileScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      const updateData: {name?: string; phone?: string} = {};
+      const updateData: { name?: string; phone?: string } = {};
       if (name.trim() !== user?.name) {
         updateData.name = name.trim();
       }
@@ -91,19 +93,21 @@ const EditProfileScreen: React.FC = () => {
       const response = await authApi.updateProfile(updateData);
       await updateStoredUser(response.data);
 
-      Alert.alert('Success', 'Your profile has been updated successfully.', [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      Alert.alert(
+        'Profile Updated',
+        'Your cryptographic security credentials have been updated successfully.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
     } catch (err) {
       const apiError = extractApiError(err);
       if (apiError.validationErrors) {
-        const fieldMap: {name?: string; phone?: string} = {};
-        apiError.validationErrors.forEach(ve => {
+        const fieldMap: { name?: string; phone?: string } = {};
+        apiError.validationErrors.forEach((ve) => {
           if (ve.field === 'name' || ve.field === 'phone') {
             fieldMap[ve.field] = ve.message;
           }
         });
-        setFieldErrors(prev => ({...prev, ...fieldMap}));
+        setFieldErrors((prev) => ({ ...prev, ...fieldMap }));
       }
       setError(apiError.message);
     } finally {
@@ -112,128 +116,150 @@ const EditProfileScreen: React.FC = () => {
   }, [name, phone, user, updateStoredUser, navigation]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        {/* ─── Info Callout ──────────────────────────────────────── */}
-        <View style={styles.infoCallout}>
-          <Icon name="Info" size={18} color={Colors.infoDark} style={styles.calloutIcon} />
-          <Text style={styles.calloutText}>
-            You can update your display name and phone number. Your registered email address is protected and cannot be modified.
-          </Text>
-        </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <StatusBar barStyle="light-content" />
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <UserAvatar name={name || 'User'} size={76} showRing />
+            <Text style={styles.avatarHint}>Verified Operator</Text>
+          </View>
 
-        {/* ─── Error Banner ──────────────────────────────────────── */}
-        {error ? (
-          <ErrorMessage message={error} onDismiss={() => setError('')} />
-        ) : null}
+          {/* Info Callout */}
+          <View style={styles.infoCallout}>
+            <Icon name="Info" size={16} color={Colors.primary} style={styles.calloutIcon} />
+            <Text style={styles.calloutText}>
+              You can update your display name and verified mobile number. Your account email address is cryptographically anchored and cannot be modified.
+            </Text>
+          </View>
 
-        {/* ─── Form Card ────────────────────────────────────────── */}
-        <View style={[styles.card, Shadows.card]}>
-          {/* ─── Email (Read-Only) ─────────────────────────────────── */}
-          <Input
-            label="Email Address (Protected)"
-            value={user?.email || ''}
-            disabled
-            leftIcon="Mail"
-            placeholder=""
-          />
+          {/* Error Banner */}
+          {error ? (
+            <ErrorMessage message={error} onDismiss={() => setError('')} />
+          ) : null}
 
-          {/* ─── Name ──────────────────────────────────────────────── */}
-          <Input
-            label="Full Name"
-            placeholder="Your full name"
-            value={name}
-            onChangeText={text => {
-              setName(text);
-              setFieldErrors(prev => ({...prev, name: undefined}));
-            }}
-            error={fieldErrors.name}
-            leftIcon="User"
-            autoCapitalize="words"
-            returnKeyType="next"
-          />
+          {/* Form Card */}
+          <View style={[styles.card, Shadows.card]}>
+            <Input
+              label="Email Address (Anchored)"
+              value={user?.email || ''}
+              disabled
+              leftIcon="Mail"
+              placeholder=""
+            />
 
-          {/* ─── Phone ─────────────────────────────────────────────── */}
-          <Input
-            label="Phone Number"
-            placeholder="+91 98765 43210"
-            value={phone}
-            onChangeText={text => {
-              setPhone(text);
-              setFieldErrors(prev => ({...prev, phone: undefined}));
-            }}
-            error={fieldErrors.phone}
-            leftIcon="Phone"
-            keyboardType="phone-pad"
-            returnKeyType="done"
-            onSubmitEditing={handleSave}
-          />
+            <Input
+              label="Full Name"
+              placeholder="Your full name"
+              value={name}
+              onChangeText={(text) => {
+                setName(text);
+                setFieldErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              error={fieldErrors.name}
+              leftIcon="User"
+              autoCapitalize="words"
+              returnKeyType="next"
+              focusColor={Colors.primary}
+            />
 
-          {/* ─── Action Buttons ────────────────────────────────────── */}
-          <Button
-            title="Save Changes"
-            onPress={handleSave}
-            loading={loading}
-            style={styles.saveButton}
-          />
+            <Input
+              label="Mobile Number (SMS Defense)"
+              placeholder="+91 98765 43210"
+              value={phone}
+              onChangeText={(text) => {
+                setPhone(text);
+                setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+              }}
+              error={fieldErrors.phone}
+              leftIcon="Phone"
+              keyboardType="phone-pad"
+              returnKeyType="done"
+              onSubmitEditing={handleSave}
+              focusColor={Colors.primary}
+            />
 
-          <Button
-            title="Cancel"
-            onPress={() => navigation.goBack()}
-            variant="ghost"
-            disabled={loading}
-          />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Button
+              title="SAVE CHANGES"
+              onPress={handleSave}
+              loading={loading}
+              variant="primary"
+              size="lg"
+              style={styles.saveButton}
+            />
+
+            <Button
+              title="Cancel"
+              onPress={() => navigation.goBack()}
+              variant="ghost"
+              disabled={loading}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
   },
+  container: {
+    flex: 1,
+  },
   scrollContent: {
-    paddingHorizontal: Spacing.screenHorizontal,
-    paddingTop: Spacing.lg,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: Spacing.xxxl,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  avatarHint: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    marginTop: 8,
+    fontWeight: '600',
   },
   infoCallout: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: Colors.infoLight,
+    backgroundColor: 'rgba(0, 123, 167, 0.12)',
     borderWidth: 1,
-    borderColor: Colors.infoBorder,
-    borderRadius: Spacing.borderRadius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
+    borderColor: 'rgba(0, 123, 167, 0.3)',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
   },
   calloutIcon: {
-    marginRight: Spacing.sm,
+    marginRight: 10,
     marginTop: 2,
   },
   calloutText: {
-    ...Typography.styles.caption,
-    color: Colors.infoDark,
-    flex: 1,
+    fontSize: 12,
     lineHeight: 18,
+    color: Colors.textSecondary,
+    flex: 1,
   },
   card: {
-    backgroundColor: Colors.white,
-    borderRadius: Spacing.borderRadius.xl,
-    padding: Spacing.cardPadding,
+    backgroundColor: Colors.card,
+    borderRadius: 18,
+    padding: 18,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   saveButton: {
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.xs,
+    marginTop: 6,
+    marginBottom: 4,
   },
 });
 

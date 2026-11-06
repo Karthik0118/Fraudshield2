@@ -37,7 +37,7 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({ file }) 
         accessibilityLabel="Toggle transaction preview">
         <View style={styles.titleLeft}>
           <View style={styles.iconBox}>
-            <Icon name="Activity" size={18} color="#3a86ff" strokeWidth={2.4} />
+            <Icon name="Activity" size={18} color={Colors.primary} strokeWidth={2.4} />
           </View>
           <View>
             <Text style={styles.sectionTitle}>Transaction Data Preview</Text>
@@ -48,9 +48,9 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({ file }) 
         </View>
 
         <Icon
-          name={isExpanded ? 'ChevronRight' : 'ChevronRight'}
+          name="ChevronRight"
           size={18}
-          color="#64748B"
+          color={Colors.textSecondary}
           style={isExpanded ? styles.iconRotated : undefined}
         />
       </TouchableOpacity>
@@ -116,18 +116,18 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({ file }) 
 
               <View style={styles.edgeConnectionRow}>
                 <View style={styles.nodeBox}>
-                  <Icon name="User" size={11} color="#475569" />
+                  <Icon name="User" size={11} color={Colors.textSecondary} />
                   <Text style={styles.nodeText} numberOfLines={1}>
                     {row.source}
                   </Text>
                 </View>
 
                 <View style={styles.arrowBox}>
-                  <Icon name="ArrowRight" size={13} color="#94A3B8" strokeWidth={2.5} />
+                  <Icon name="ArrowRight" size={13} color={Colors.textTertiary} strokeWidth={2.5} />
                 </View>
 
                 <View style={styles.nodeBox}>
-                  <Icon name="User" size={11} color="#475569" />
+                  <Icon name="User" size={11} color={Colors.textSecondary} />
                   <Text style={styles.nodeText} numberOfLines={1}>
                     {row.target}
                   </Text>
@@ -136,7 +136,7 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({ file }) 
 
               <View style={styles.rowBottomMeta}>
                 <View style={styles.timeTag}>
-                  <Icon name="Clock" size={11} color="#94A3B8" />
+                  <Icon name="Clock" size={11} color={Colors.textTertiary} />
                   <Text style={styles.timeText}>{row.timestamp}</Text>
                 </View>
 
@@ -163,7 +163,7 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({ file }) 
                   </View>
                 ) : (
                   <View style={styles.normalBadge}>
-                    <Icon name="Check" size={11} color={Colors.successDark} />
+                    <Icon name="Check" size={11} color={Colors.success} />
                     <Text style={styles.normalText}>Standard Flow</Text>
                   </View>
                 )}
@@ -195,11 +195,11 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({ file }) 
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     marginBottom: Spacing.md,
   },
   headerRow: {
@@ -216,7 +216,9 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#0B132B',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -224,12 +226,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
     letterSpacing: -0.2,
   },
   sectionSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 1,
   },
   iconRotated: {
@@ -239,13 +241,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.cardElevated,
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginTop: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
   },
   metricItem: {
     alignItems: 'center',
@@ -254,19 +256,19 @@ const styles = StyleSheet.create({
   metricNumber: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
   },
   metricLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 2,
     textTransform: 'uppercase',
   },
   divider: {
     width: 1,
     height: 22,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   tableContainer: {
     marginTop: 14,
@@ -274,20 +276,20 @@ const styles = StyleSheet.create({
   tableHeaderNote: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
+    color: Colors.textSecondary,
     marginBottom: 8,
   },
   rowCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.cardElevated,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     padding: 10,
     marginBottom: 8,
   },
   rowCardFlagged: {
-    borderColor: '#FECACA',
-    backgroundColor: '#FFF8F8',
+    borderColor: 'rgba(255, 69, 69, 0.4)',
+    backgroundColor: 'rgba(255, 69, 69, 0.08)',
   },
   rowTopLine: {
     flexDirection: 'row',
@@ -296,7 +298,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   txIdBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#0B132B',
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 4,
@@ -305,7 +309,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'monospace',
     fontWeight: '600',
-    color: '#334155',
+    color: Colors.textSecondary,
   },
   rowRightInfo: {
     flexDirection: 'row',
@@ -315,10 +319,12 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
   },
   typeBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#0B132B',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 4,
@@ -326,13 +332,15 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#2563EB',
+    color: Colors.primaryLight,
   },
   edgeConnectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0B132B',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
     paddingVertical: 6,
     paddingHorizontal: 8,
     marginBottom: 8,
@@ -346,7 +354,7 @@ const styles = StyleSheet.create({
   nodeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#1E293B',
+    color: Colors.textPrimary,
     fontFamily: 'monospace',
   },
   arrowBox: {
@@ -364,13 +372,15 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textTertiary,
   },
   flagBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'rgba(255, 69, 69, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 69, 69, 0.3)',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 4,
@@ -384,7 +394,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: 'rgba(32, 217, 138, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(32, 217, 138, 0.25)',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 4,
@@ -392,11 +404,11 @@ const styles = StyleSheet.create({
   normalText: {
     fontSize: 10,
     fontWeight: '600',
-    color: Colors.successDark,
+    color: Colors.success,
   },
   footerNote: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: Colors.textTertiary,
     textAlign: 'center',
     marginTop: 4,
     fontStyle: 'italic',

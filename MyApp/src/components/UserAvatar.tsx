@@ -1,12 +1,13 @@
 /**
- * Modern User Avatar Component
+ * Cyber User Avatar Component — FraudShield
  *
- * Initials-based avatar with deterministic vibrant styling and subtle border.
+ * Initials-based avatar with deterministic vibrant styling, cyber accent ring,
+ * and high-contrast typography.
  */
 
 import React from 'react';
-import {View, Text, StyleSheet, ViewStyle} from 'react-native';
-import {Colors, Typography, Shadows} from '../theme/theme';
+import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { Colors, Typography, Shadows } from '../theme/theme';
 
 interface UserAvatarProps {
   name: string;
@@ -30,7 +31,7 @@ const getInitials = (name: string): string => {
   if (parts.length >= 2 && parts[0] && parts[parts.length - 1]) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
-  return (name.slice(0, 2) || '??').toUpperCase();
+  return (name.slice(0, 2) || 'FS').toUpperCase();
 };
 
 const UserAvatar: React.FC<UserAvatarProps> = ({
@@ -57,7 +58,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
         Shadows.sm,
         style,
       ]}>
-      <Text style={[styles.initials, {fontSize, lineHeight: fontSize + 4}]}>
+      <Text style={[styles.initials, { fontSize, lineHeight: fontSize + 4 }]}>
         {initials}
       </Text>
     </View>
@@ -68,16 +69,21 @@ const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.white,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   ring: {
-    borderColor: Colors.primaryBorder,
-    borderWidth: 2.5,
+    borderColor: Colors.secondary,
+    borderWidth: 2,
+    shadowColor: Colors.secondary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 3,
   },
   initials: {
-    color: Colors.textInverse,
-    fontWeight: Typography.weights.semibold,
+    color: '#FFFFFF',
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
 });

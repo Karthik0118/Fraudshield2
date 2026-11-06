@@ -1,11 +1,11 @@
 /**
- * Modern Input Component
+ * Cyber Input Component — FraudShield
  *
  * Styled TextInput with Lucide left icons, password reveal toggle (Eye / EyeOff),
- * animated focus states, accessible validation error states, and clear typography.
+ * animated electric blue focus glow, dark surface styling, and clear validation feedback.
  */
 
-import React, {useState, useRef} from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   TextInput,
@@ -16,8 +16,8 @@ import {
   TextInputProps,
   ViewStyle,
 } from 'react-native';
-import {Colors, Typography, Spacing} from '../theme/theme';
-import Icon, {IconName} from './Icon';
+import { Colors, Typography, Spacing } from '../theme/theme';
+import Icon, { IconName } from './Icon';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
@@ -77,8 +77,8 @@ const Input: React.FC<InputProps> = ({
   const backgroundColor = disabled
     ? Colors.disabledBackground
     : isFocused
-    ? Colors.white
-    : Colors.surface;
+    ? '#1B1B24'
+    : '#14141A';
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -94,7 +94,7 @@ const Input: React.FC<InputProps> = ({
       <Animated.View
         style={[
           styles.inputContainer,
-          {borderColor, backgroundColor},
+          { borderColor, backgroundColor },
           isFocused && styles.inputContainerFocused,
           disabled && styles.inputContainerDisabled,
           error && styles.inputContainerError,
@@ -110,7 +110,7 @@ const Input: React.FC<InputProps> = ({
                     ? Colors.error
                     : isFocused
                     ? activeFocusColor
-                    : Colors.textTertiary
+                    : Colors.textSecondary
                 }
               />
             ) : (
@@ -122,8 +122,8 @@ const Input: React.FC<InputProps> = ({
         <TextInput
           style={[
             styles.input,
-            leftIcon && styles.inputWithIcon,
-            disabled && styles.inputDisabled,
+            leftIcon ? styles.inputWithIcon : undefined,
+            disabled ? styles.inputDisabled : undefined,
           ]}
           placeholderTextColor={Colors.placeholder}
           editable={!disabled}
@@ -138,13 +138,15 @@ const Input: React.FC<InputProps> = ({
           <TouchableOpacity
             style={styles.toggleButton}
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-            hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}>
+            accessibilityLabel={
+              isPasswordVisible ? 'Hide password' : 'Show password'
+            }>
             <Icon
               name={isPasswordVisible ? 'EyeOff' : 'Eye'}
-              size={20}
-              color={Colors.textTertiary}
+              size={19}
+              color={Colors.textSecondary}
             />
           </TouchableOpacity>
         )}
@@ -152,7 +154,12 @@ const Input: React.FC<InputProps> = ({
 
       {error ? (
         <View style={styles.errorRow}>
-          <Icon name="AlertCircle" size={13} color={Colors.error} style={{marginRight: 4}} />
+          <Icon
+            name="AlertCircle"
+            size={13}
+            color={Colors.error}
+            style={{ marginRight: 4 }}
+          />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
@@ -172,8 +179,9 @@ const styles = StyleSheet.create({
   },
   label: {
     ...Typography.styles.label,
-    color: Colors.textPrimary,
-    fontWeight: Typography.weights.medium,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 13,
   },
   labelError: {
     color: Colors.error,
@@ -185,25 +193,25 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderRadius: Spacing.borderRadius.md,
-    height: Spacing.inputHeight,
-    paddingHorizontal: Spacing.inputHorizontal,
+    borderWidth: 1.2,
+    borderRadius: 12,
+    height: 50,
+    paddingHorizontal: 14,
   },
   inputContainerFocused: {
-    backgroundColor: Colors.white,
     shadowColor: Colors.primary,
-    shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
   },
   inputContainerDisabled: {
     borderColor: Colors.borderLight,
+    opacity: 0.6,
   },
   inputContainerError: {
     borderColor: Colors.error,
-    backgroundColor: Colors.errorLight,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
   },
   input: {
     flex: 1,
@@ -211,6 +219,7 @@ const styles = StyleSheet.create({
     ...Typography.styles.body,
     color: Colors.textPrimary,
     paddingVertical: 0,
+    fontSize: 15,
   },
   inputWithIcon: {
     paddingLeft: Spacing.sm,
@@ -231,7 +240,7 @@ const styles = StyleSheet.create({
   errorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.xs + 1,
+    marginTop: 6,
   },
   errorText: {
     ...Typography.styles.caption,

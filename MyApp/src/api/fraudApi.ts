@@ -136,6 +136,28 @@ export interface StatementExtractionResponse {
   message?: string;
 }
 
+export interface PdfStatementParseResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    name: string;
+    size: string;
+    transactionCount: number;
+    entitiesCount: number;
+    format: 'PDF';
+    columns: string[];
+    sampleData: Array<{
+      id: string;
+      source: string;
+      target: string;
+      amount: string;
+      timestamp: string;
+      type: string;
+      flagged?: boolean;
+    }>;
+  };
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 const FRAUD_BASE = '/api/fraud';
@@ -144,7 +166,6 @@ const fraudApi = {
   /**
    * POST /api/fraud/analyze
    * Sends message text to the backend for ML fraud analysis.
-   * Requires authentication (Bearer token attached by apiClient interceptor).
    */
   analyzeMessage: async (text: string): Promise<FraudAnalysisResponse> => {
     const response = await apiClient.post<FraudAnalysisResponse>(
@@ -169,6 +190,7 @@ const fraudApi = {
     return response.data;
   },
 
+  /**
   /**
    * POST /api/fraud/extract-statement
    * Uploads and parses bank statement (PDF, base64, or simulated raw text).
@@ -200,7 +222,32 @@ const fraudApi = {
     );
     return response.data;
   },
+
+  /**
+   * Alias for analyzeTransactionNetwork
+   */
+  analyzeNetwork: async (
+    transactions: any[],
+    datasetName?: string,
+  ): Promise<GcnNetworkAnalysisResponse> => {
+    return fraudApi.analyzeTransactionNetwork(transactions, datasetName);
+  },
+
+  /**
+   * POST /api/fraud/upload-pdf
+   * Uploads and parses bank statement PDF / e-statement payload into structured transactions.
+   */
+  uploadAndParsePdf: async (payload: {
+    pdfBase64?: string;
+    statementText?: string;
+    fileName?: string;
+  }): Promise<PdfStatementParseResponse> => {
+    const response = await apiClient.post<PdfStatementParseResponse>(
+      `${FRAUD_BASE}/upload-pdf`,
+      payload,
+    );
+    return response.data;
+  },
 };
 
 export default fraudApi;
-

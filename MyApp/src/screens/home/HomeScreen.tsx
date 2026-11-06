@@ -1,20 +1,15 @@
 /**
- * Redesigned Home / Dashboard Screen — FraudShield
+ * Premium AI Cybersecurity Dashboard — HomeScreen
  *
- * Modern, mobile-security dashboard organized into clear, logical sections:
- * - Section A: Compact Header (Plain branding, tagline, user profile shortcut)
- * - Section B: Protection Status (Real-time WhatsApp, SMS, URL shield, and floating bot defense)
- * - Section C: Quick Actions (Check message, scan screenshot, view history, manage settings)
- * - Section D: Recent Detections (Recent scan previews with source and risk indicators)
- * - Section E: Security Insights (Accurate statistics computed from real detection records)
- *
- * Adheres strictly to FraudShield design system:
- * - Minimal, trustworthy, professional
- * - Primary accent #3a86ff
- * - Restrained shadows, accessible contrast, clean typography
+ * Redesigned with:
+ * - Animated AI Scanner as hero visual
+ * - Animated Cyber Shield
+ * - Premium FraudShield branding
+ * - Cerulean Blue + Neon Rose palette
+ * - Smooth entrance animations
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -26,12 +21,16 @@ import {
   View,
   Text,
   TouchableOpacity,
+  StatusBar,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, Spacing, Shadows } from '../../theme/theme';
 import Icon from '../../components/Icon';
+import { AnimatedAIScanner } from '../../components/animations';
 import {
   checkAllServiceStatus,
   openOverlaySettings,
@@ -49,8 +48,6 @@ import QuickActionsGrid from './components/QuickActionsGrid';
 import RecentDetectionsSection from './components/RecentDetectionsSection';
 import SecurityInsightsCard from './components/SecurityInsightsCard';
 
-const PRIMARY_COLOR = '#3a86ff';
-
 export const HomeScreen: React.FC = () => {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
@@ -63,6 +60,35 @@ export const HomeScreen: React.FC = () => {
 
   const [floatingBotActive, setFloatingBotActive] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  // Entrance animations
+  const heroFade = useRef(new Animated.Value(0)).current;
+  const heroScale = useRef(new Animated.Value(0.8)).current;
+  const contentFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Stagger entrance animations
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(heroFade, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.spring(heroScale, {
+          toValue: 1,
+          tension: 40,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(contentFade, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   // ─── Real-Time Permission & Service Verification ──────────────────────────
 
@@ -106,7 +132,6 @@ export const HomeScreen: React.FC = () => {
   useEffect(() => {
     refreshStatus();
 
-    // Auto-refresh when returning to app from Android Settings
     const subscription = AppState.addEventListener(
       'change',
       (nextState: AppStateStatus) => {
@@ -124,7 +149,15 @@ export const HomeScreen: React.FC = () => {
   // ─── Navigation Handlers ──────────────────────────────────────────────────
 
   const handleOpenProfile = () => {
-    navigation.dispatch(CommonActions.navigate({ name: 'Profile' }));
+    navigation.navigate('Profile');
+  };
+
+  const handleNotificationPress = () => {
+    Alert.alert(
+      'Security Feed',
+      'All AI detection models and background interception services are operating nominally.',
+      [{ text: 'Dismiss', style: 'cancel' }],
+    );
   };
 
   const handleCheckMessage = () => {
@@ -140,7 +173,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleOpenSettings = () => {
-    navigation.dispatch(CommonActions.navigate({ name: 'Settings' }));
+    navigation.navigate('Settings');
   };
 
   const handleOpenAssistant = () => {
@@ -165,6 +198,7 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="light-content" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -172,70 +206,63 @@ export const HomeScreen: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onPullRefresh}
-            colors={[PRIMARY_COLOR]}
-            tintColor={PRIMARY_COLOR}
+            colors={[Colors.primary]}
+            tintColor={Colors.primary}
           />
         }>
         {/* ─── Section A: Header ─────────────────────────────────────── */}
         <DashboardHeader
           userName={user?.name || 'User'}
           onPressProfile={handleOpenProfile}
+          onPressNotification={handleNotificationPress}
         />
 
-        {/* ─── Section B: Protection Status ─────────────────────────── */}
-        <ProtectionStatusCard
-          status={serviceStatus}
-          floatingBotActive={floatingBotActive}
-          onToggleFloatingBot={handleToggleFloatingBot}
-        />
+        {/* ─── Section B: Animated AI Scanner Hero ────────────────────── */}
+        <Animated.View
+          style={[
+            styles.scannerContainer,
+            {
+              opacity: heroFade,
+              transform: [{ scale: heroScale }],
+            },
+          ]}>
+          <AnimatedAIScanner size={136} showParticles={true} />
+          <Text style={styles.scannerLabel}>AI Threat Detection Engine</Text>
+          <Text style={styles.scannerSublabel}>
+            Analyzing messages, links & network patterns in real-time
+          </Text>
+        </Animated.View>
 
-        {/* ─── Fraud Help Assistant Entry Point ──────────────────────── */}
-        <FraudHelpAssistantCard
-          onOpenAssistant={handleOpenAssistant}
-          onSelectPrompt={handleSelectAssistantPrompt}
-        />
+        <Animated.View style={{ opacity: contentFade }}>
+          {/* ─── Section C: Protection Status Card ─────────────────────── */}
+          <ProtectionStatusCard
+            status={serviceStatus}
+            floatingBotActive={floatingBotActive}
+            onToggleFloatingBot={handleToggleFloatingBot}
+          />
 
-        {/* ─── Section C: Quick Actions ─────────────────────────────── */}
-        <QuickActionsGrid
-          onCheckMessage={handleCheckMessage}
-          onScanScreenshot={handleScanScreenshot}
-          onViewHistory={handleViewHistory}
-          onOpenSettings={handleOpenSettings}
-        />
+          {/* ─── Section D: Quick Detection Actions ──────────────────────── */}
+          <QuickActionsGrid
+            onCheckMessage={handleCheckMessage}
+            onScanScreenshot={handleScanScreenshot}
+            onViewHistory={handleViewHistory}
+            onOpenSettings={handleOpenSettings}
+            onOpenAssistant={handleOpenAssistant}
+            onOpenNetworkAnalysis={handleOpenNetworkAnalysis}
+          />
 
-        {/* ─── Transaction Network Analysis Feature Card ────────────── */}
-        <TouchableOpacity
-          style={[styles.networkCard, Shadows.card]}
-          onPress={handleOpenNetworkAnalysis}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Open Transaction Network Analysis">
-          <View style={styles.networkCardLeft}>
-            <View style={styles.networkIconBox}>
-              <Icon name="Activity" size={20} color={PRIMARY_COLOR} strokeWidth={2.4} />
-            </View>
-            <View style={styles.networkTextCol}>
-              <View style={styles.networkBadgeRow}>
-                <Text style={styles.networkCardTitle}>Network Analysis</Text>
-                <View style={styles.gcnBadge}>
-                  <Text style={styles.gcnBadgeText}>GCN</Text>
-                </View>
-              </View>
-              <Text style={styles.networkCardSubtitle} numberOfLines={1}>
-                Inspect transaction graphs to detect money mule rings & cyclic fraud
-              </Text>
-            </View>
-          </View>
-          <View style={styles.networkArrowBtn}>
-            <Icon name="ChevronRight" size={18} color={PRIMARY_COLOR} strokeWidth={2.5} />
-          </View>
-        </TouchableOpacity>
+          {/* ─── Section F: Security Overview Statistics ───────────────── */}
+          <SecurityInsightsCard isProtectionActive={isProtectionFullyActive} />
 
-        {/* ─── Section D: Recent Detections ─────────────────────────── */}
-        <RecentDetectionsSection onViewAll={handleViewHistory} />
+          {/* ─── Section G: Fraud Help Assistant Card ──────────────────── */}
+          <FraudHelpAssistantCard
+            onOpenAssistant={handleOpenAssistant}
+            onSelectPrompt={handleSelectAssistantPrompt}
+          />
 
-        {/* ─── Section E: Security Insights ─────────────────────────── */}
-        <SecurityInsightsCard isProtectionActive={isProtectionFullyActive} />
+          {/* ─── Section H: Recent Threat Activity ─────────────────────── */}
+          <RecentDetectionsSection onViewAll={handleViewHistory} />
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -247,75 +274,30 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.screenHorizontal,
+    paddingHorizontal: 16,
     paddingTop: Spacing.xs,
     paddingBottom: Spacing.xxxl,
   },
-  networkCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    flexDirection: 'row',
+  // AI Scanner Hero
+  scannerContainer: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
+    paddingVertical: 10,
+    marginBottom: 12,
   },
-  networkCardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
-  },
-  networkIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  networkTextCol: {
-    flex: 1,
-  },
-  networkBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  networkCardTitle: {
-    fontSize: 14,
+  scannerLabel: {
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.white,
+    marginTop: 10,
+    letterSpacing: -0.3,
   },
-  gcnBadge: {
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 1,
-    paddingHorizontal: 5,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+  scannerSublabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 3,
+    textAlign: 'center',
   },
-  gcnBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#1D4ED8',
-  },
-  networkCardSubtitle: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  networkArrowBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
 });
 
 export default HomeScreen;

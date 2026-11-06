@@ -1,16 +1,8 @@
 /**
- * App Navigator — FraudShield
+ * App Navigator — FraudShield Cyber Edition
  *
- * Modern Bottom Tab Navigator configured with core security destinations:
- * - Home (Dashboard)
- * - Check (Message & Screenshot Fraud Checker)
- * - History (Detection Records & Analytics)
- * - Settings (Security Rules, Cache, App Configuration)
- *
- * Follows FraudShield design system:
- * - Primary accent #3a86ff
- * - Lucide icons with consistent sizes
- * - Smooth stack transitions and accessible safe areas
+ * Premium 5-Tab Cyber Navigation:
+ * Jet Black background, Cerulean Blue active, Neon Rose accents
  */
 
 import React from 'react';
@@ -28,8 +20,6 @@ import AssistantChatScreen from '../screens/assistant/AssistantChatScreen';
 import NetworkAnalysisScreen from '../screens/network/NetworkAnalysisScreen';
 import { Colors, Typography, Spacing, Shadows } from '../theme/theme';
 import Icon, { IconName } from '../components/Icon';
-
-const PRIMARY_COLOR = '#3a86ff';
 
 export interface AssistantChatParams {
   mode?: 'detection_explanation' | 'general_help';
@@ -49,6 +39,9 @@ export type HomeStackParamList = {
   MessageChecker?: { initialMode?: 'paste' | 'upload' };
   DetectionHistory: undefined;
   Profile: undefined;
+  Settings: undefined;
+  EditProfile: undefined;
+  ChangePassword: undefined;
   AssistantChat?: AssistantChatParams;
   NetworkAnalysis?: undefined;
 };
@@ -58,46 +51,53 @@ export type CheckStackParamList = {
   AssistantChat?: AssistantChatParams;
 };
 
+export type AssistantStackParamList = {
+  AssistantMain?: AssistantChatParams;
+};
+
 export type HistoryStackParamList = {
   HistoryMain: undefined;
   AssistantChat?: AssistantChatParams;
 };
 
-export type SettingsStackParamList = {
-  SettingsMain: undefined;
-  ChangePassword: undefined;
-  Profile: undefined;
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
   EditProfile: undefined;
+  Settings: undefined;
+  ChangePassword: undefined;
 };
 
-// ─── Tab Icon Component ─────────────────────────────────────────────────────
+export type SettingsStackParamList = ProfileStackParamList;
+
+// ─── Tab Icon Component with Active Pill ──────────────────────────────
 
 interface TabIconProps {
   name: IconName;
   focused: boolean;
+  isAI?: boolean;
 }
 
-const TabBarIcon: React.FC<TabIconProps> = ({ name, focused }) => (
-  <View style={[styles.iconWrapper, focused && styles.iconWrapperFocused]}>
+const TabBarIcon: React.FC<TabIconProps> = ({ name, focused, isAI }) => (
+  <View style={[styles.iconWrapper, focused && (isAI ? styles.iconWrapperFocusedAI : styles.iconWrapperFocused)]}>
     <Icon
       name={name}
-      size={21}
-      color={focused ? PRIMARY_COLOR : '#94A3B8'}
+      size={20}
+      color={focused ? (isAI ? Colors.secondary : Colors.primary) : Colors.textTertiary}
       strokeWidth={focused ? 2.5 : 2}
     />
   </View>
 );
 
-// ─── Shared Stack Options ───────────────────────────────────────────────────
+// ─── Shared Dark Stack Options ──────────────────────────────────────────────
 
 const stackScreenOptions = {
   headerStyle: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
   },
-  headerTintColor: '#0F172A',
+  headerTintColor: Colors.textPrimary,
   headerTitleStyle: {
     ...Typography.styles.bodySemibold,
-    color: '#0F172A',
+    color: Colors.textPrimary,
   },
   headerShadowVisible: false,
   contentStyle: { backgroundColor: Colors.background },
@@ -118,7 +118,7 @@ const HomeStackScreen: React.FC = () => (
     <HomeStack.Screen
       name="MessageChecker"
       component={MessageCheckerScreen}
-      options={{ title: 'Check Message', headerBackTitle: 'Home' }}
+      options={{ title: 'AI Fraud Scanner', headerBackTitle: 'Home' }}
     />
     <HomeStack.Screen
       name="DetectionHistory"
@@ -131,6 +131,21 @@ const HomeStackScreen: React.FC = () => (
       options={{ title: 'My Profile', headerBackTitle: 'Home' }}
     />
     <HomeStack.Screen
+      name="Settings"
+      component={SettingsScreen}
+      options={{ headerShown: false }}
+    />
+    <HomeStack.Screen
+      name="EditProfile"
+      component={EditProfileScreen}
+      options={{ title: 'Edit Profile', headerBackTitle: 'Back' }}
+    />
+    <HomeStack.Screen
+      name="ChangePassword"
+      component={ChangePasswordScreen}
+      options={{ headerShown: false }}
+    />
+    <HomeStack.Screen
       name="AssistantChat"
       component={AssistantChatScreen}
       options={{ headerShown: false }}
@@ -138,12 +153,12 @@ const HomeStackScreen: React.FC = () => (
     <HomeStack.Screen
       name="NetworkAnalysis"
       component={NetworkAnalysisScreen}
-      options={{ title: 'Network Analysis', headerBackTitle: 'Home' }}
+      options={{ title: 'Transaction Network Analysis', headerBackTitle: 'Home' }}
     />
   </HomeStack.Navigator>
 );
 
-// ─── 2. Check Stack ─────────────────────────────────────────────────────────
+// ─── 2. Scan / Check Stack ──────────────────────────────────────────────────
 
 const CheckStack = createNativeStackNavigator<CheckStackParamList>();
 
@@ -152,7 +167,7 @@ const CheckStackScreen: React.FC = () => (
     <CheckStack.Screen
       name="CheckMain"
       component={MessageCheckerScreen}
-      options={{ title: 'Fraud Checker', headerShown: false }}
+      options={{ title: 'AI Fraud Scanner', headerShown: false }}
     />
     <CheckStack.Screen
       name="AssistantChat"
@@ -162,7 +177,21 @@ const CheckStackScreen: React.FC = () => (
   </CheckStack.Navigator>
 );
 
-// ─── 3. History Stack ───────────────────────────────────────────────────────
+// ─── 3. AI Assistant Stack ──────────────────────────────────────────────────
+
+const AssistantStack = createNativeStackNavigator<AssistantStackParamList>();
+
+const AssistantStackScreen: React.FC = () => (
+  <AssistantStack.Navigator screenOptions={stackScreenOptions}>
+    <AssistantStack.Screen
+      name="AssistantMain"
+      component={AssistantChatScreen}
+      options={{ headerShown: false }}
+    />
+  </AssistantStack.Navigator>
+);
+
+// ─── 4. History Stack ───────────────────────────────────────────────────────
 
 const HistoryStack = createNativeStackNavigator<HistoryStackParamList>();
 
@@ -181,36 +210,36 @@ const HistoryStackScreen: React.FC = () => (
   </HistoryStack.Navigator>
 );
 
-// ─── 4. Settings Stack ──────────────────────────────────────────────────────
+// ─── 5. Profile & Settings Stack ───────────────────────────────────────────
 
-const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
+const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 
-const SettingsStackScreen: React.FC = () => (
-  <SettingsStack.Navigator screenOptions={stackScreenOptions}>
-    <SettingsStack.Screen
-      name="SettingsMain"
+const ProfileStackScreen: React.FC = () => (
+  <ProfileStack.Navigator screenOptions={stackScreenOptions}>
+    <ProfileStack.Screen
+      name="ProfileMain"
+      component={ProfileScreen}
+      options={{ headerShown: false }}
+    />
+    <ProfileStack.Screen
+      name="Settings"
       component={SettingsScreen}
       options={{ headerShown: false }}
     />
-    <SettingsStack.Screen
-      name="ChangePassword"
-      component={ChangePasswordScreen}
-      options={{ title: 'Change Password', headerBackTitle: 'Settings' }}
-    />
-    <SettingsStack.Screen
-      name="Profile"
-      component={ProfileScreen}
-      options={{ title: 'Profile', headerBackTitle: 'Settings' }}
-    />
-    <SettingsStack.Screen
+    <ProfileStack.Screen
       name="EditProfile"
       component={EditProfileScreen}
       options={{ title: 'Edit Profile', headerBackTitle: 'Profile' }}
     />
-  </SettingsStack.Navigator>
+    <ProfileStack.Screen
+      name="ChangePassword"
+      component={ChangePasswordScreen}
+      options={{ headerShown: false }}
+    />
+  </ProfileStack.Navigator>
 );
 
-// ─── Bottom Tab Navigator ───────────────────────────────────────────────────
+// ─── Bottom Tab Navigator (5 Tabs) ──────────────────────────────────────────
 
 const Tab = createBottomTabNavigator();
 
@@ -220,8 +249,8 @@ export const AppNavigator: React.FC = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: PRIMARY_COLOR,
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textTertiary,
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarHideOnKeyboard: true,
       }}>
@@ -236,12 +265,23 @@ export const AppNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Check"
+        name="Scan"
         component={CheckStackScreen}
         options={{
-          tabBarLabel: 'Check',
+          tabBarLabel: 'Scan',
           tabBarIcon: ({ focused }) => (
-            <TabBarIcon name="Search" focused={focused} />
+            <TabBarIcon name="Scan" focused={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Assistant"
+        component={AssistantStackScreen}
+        options={{
+          tabBarLabel: 'AI Assistant',
+          tabBarActiveTintColor: Colors.secondary,
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon name="Bot" focused={focused} isAI={true} />
           ),
         }}
       />
@@ -256,12 +296,12 @@ export const AppNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Settings"
-        component={SettingsStackScreen}
+        name="Profile"
+        component={ProfileStackScreen}
         options={{
-          tabBarLabel: 'Settings',
+          tabBarLabel: 'Profile',
           tabBarIcon: ({ focused }) => (
-            <TabBarIcon name="Settings" focused={focused} />
+            <TabBarIcon name="User" focused={focused} />
           ),
         }}
       />
@@ -271,28 +311,33 @@ export const AppNavigator: React.FC = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#FFFFFF',
-    borderTopColor: '#E2E8F0',
+    backgroundColor: '#0E0E14',
+    borderTopColor: Colors.border,
     borderTopWidth: 1,
-    paddingTop: Spacing.xs,
-    paddingBottom: Platform.OS === 'ios' ? Spacing.lg : Spacing.sm,
-    height: Platform.OS === 'ios' ? 82 : 64,
-    ...Shadows.md,
+    paddingTop: 6,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    height: Platform.OS === 'ios' ? 84 : 64,
+    ...Shadows.lg,
   },
   tabBarLabel: {
     ...Typography.styles.small,
-    fontWeight: Typography.weights.medium,
+    fontWeight: '600',
     marginTop: 2,
     fontSize: 11,
+    letterSpacing: 0.2,
   },
   iconWrapper: {
-    padding: 4,
-    borderRadius: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconWrapperFocused: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(0, 123, 167, 0.12)',
+  },
+  iconWrapperFocusedAI: {
+    backgroundColor: 'rgba(255, 45, 149, 0.12)',
   },
 });
 

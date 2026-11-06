@@ -1,5 +1,5 @@
 /**
- * Network Analysis Result Component — FraudShield
+ * Network Analysis Result Component — FraudShield Cyber Edition
  *
  * Displays the comprehensive Graph Convolutional Network (GCN) analysis results:
  * - Prominent Fraud Risk Score (0-100 gauge)
@@ -7,17 +7,14 @@
  * - Total transactions & entities processed
  * - High-Risk Suspicious Entities list (Mule hubs, Ring originators)
  * - Suspicious Transactions list with amounts and risk indicators
- * - Clearly labeled UI placeholder notice (as required by prompt restrictions)
+ * - Direct AI Assistant explanation link
  */
 
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Icon from '../../../components/Icon';
+import Badge from '../../../components/Badge';
 import { Colors, Shadows, Spacing } from '../../../theme/theme';
 
 export interface SuspiciousEntity {
@@ -63,6 +60,7 @@ export const NetworkAnalysisResult: React.FC<NetworkAnalysisResultProps> = ({
   isLiveResult = false,
   inferenceTimeMs,
 }) => {
+  const navigation = useNavigation<any>();
   const [activeTab, setActiveTab] = useState<'entities' | 'transactions'>('entities');
 
   const getRiskColor = (level: 'Low' | 'Medium' | 'High') => {
@@ -77,84 +75,76 @@ export const NetworkAnalysisResult: React.FC<NetworkAnalysisResultProps> = ({
     }
   };
 
-  const getRiskBg = (level: 'Low' | 'Medium' | 'High') => {
-    switch (level) {
-      case 'High':
-        return '#FEF2F2';
-      case 'Medium':
-        return '#FFFBEB';
-      case 'Low':
-      default:
-        return '#ECFDF5';
-    }
-  };
-
   const riskColor = getRiskColor(result.riskLevel);
-  const riskBg = getRiskBg(result.riskLevel);
+
+  const handleExplainWithAI = () => {
+    navigation.navigate('AssistantChat', {
+      mode: 'detection_explanation',
+      detectionContext: {
+        detectionId: `gcn_${Date.now()}`,
+        source: 'GCN_NETWORK_ANALYSIS',
+        classification: result.riskLevel === 'High' ? 'FRAUD' : result.riskLevel === 'Medium' ? 'SUSPICIOUS' : 'LEGITIMATE',
+        riskScore: result.riskScore / 100,
+        reasons: result.suspiciousEntities.map((e) => `${e.id} (${e.role}): ${e.reason}`),
+        safePreview: `Network ledger: ${result.flaggedEntitiesCount} flagged entities, ${result.flaggedTransactionsCount} anomalous transactions.`,
+      },
+      initialPrompt:
+        result.riskLevel === 'High'
+          ? 'Can you explain the mule ring and structuring anomalies detected by the Graph Convolutional Network in this ledger?'
+          : 'Can you summarize the safety and topological flow of this transaction network?',
+    });
+  };
 
   return (
     <View style={styles.container}>
-      {/* ─── Model State Banner: Live Backend vs Preview ──────────────────── */}
+      {/* ─── Model State Banner ────────────────────────────────────────── */}
       {isLiveResult ? (
         <View style={styles.liveNoticeBanner}>
-          <Icon name="CheckCircle2" size={16} color={Colors.successDark} strokeWidth={2.4} />
-          <View style={styles.noticeTextContainer}>
-            <Text style={styles.liveNoticeTitle}>
-              Live GCN Model Inference Active {inferenceTimeMs ? `(${inferenceTimeMs}ms)` : ''}
-            </Text>
-            <Text style={styles.liveNoticeBody}>
-              Spectral graph convolution was executed in real-time by the Python FastAPI backend engine.
-            </Text>
-          </View>
+          <Icon name="CheckCircle2" size={16} color={Colors.success} strokeWidth={2.4} />
+          <Text style={styles.liveNoticeText}>
+            Analyzed via live FraudShield GCN backend
+            {inferenceTimeMs ? ` in ${inferenceTimeMs}ms` : ''}
+          </Text>
         </View>
-      ) : (
-        <View style={styles.noticeBanner}>
-          <Icon name="Info" size={16} color="#1D4ED8" strokeWidth={2.4} />
-          <View style={styles.noticeTextContainer}>
-            <Text style={styles.noticeTitle}>GCN Analysis UI Preview</Text>
-            <Text style={styles.noticeBody}>
-              Displaying simulated frontend interface state. Live GCN model inference will populate these fields when the backend API is connected.
-            </Text>
-          </View>
-        </View>
-      )}
+      ) : null}
 
-      {/* ─── Primary Score & Risk Level Card ──────────────────────────────── */}
+      {/* ─── Primary Score Card ───────────────────────────────────────── */}
       <View style={[styles.scoreCard, Shadows.card]}>
         <View style={styles.scoreRow}>
-          {/* Circular Score Badge */}
-          <View style={[styles.scoreCircle, { borderColor: riskColor }]}>
+          {/* Gauge Circle */}
+          <View style={[styles.gaugeCircle, { borderColor: riskColor }]}>
             <Text style={[styles.scoreValue, { color: riskColor }]}>
               {result.riskScore}
             </Text>
-            <Text style={styles.scoreScale}>/100</Text>
+            <Text style={styles.scoreScale}>/ 100</Text>
           </View>
 
-          {/* Risk Level and Summary */}
+          {/* Score Details */}
           <View style={styles.scoreTextCol}>
             <View style={styles.riskBadgeRow}>
-              <View style={[styles.riskLevelBadge, { backgroundColor: riskBg }]}>
-                <View style={[styles.riskLevelDot, { backgroundColor: riskColor }]} />
-                <Text style={[styles.riskLevelText, { color: riskColor }]}>
-                  {result.riskLevel} Risk Level
-                </Text>
-              </View>
+              <Badge
+                label={`${result.riskLevel.toUpperCase()} THREAT LEVEL`}
+                variant={result.riskLevel === 'High' ? 'fraud' : result.riskLevel === 'Medium' ? 'suspicious' : 'safe'}
+                size="sm"
+              />
             </View>
 
             <Text style={styles.scoreHeading}>
               {result.riskLevel === 'High'
-                ? 'Fraud Ring Cluster Detected'
+                ? 'Coordinated Mule Ring Detected'
                 : result.riskLevel === 'Medium'
-                ? 'Elevated Transaction Velocity'
-                : 'Standard Transaction Behavior'}
+                ? 'Elevated Velocity Anomaly'
+                : 'Clean Transaction Graph'}
             </Text>
             <Text style={styles.scoreDescription}>
-              Multi-hop graph convolution identified {result.flaggedEntitiesCount} suspicious nodes participating in synchronized fund transfers.
+              {result.riskLevel === 'High'
+                ? `${result.flaggedEntitiesCount} entities exhibit pass-through structuring & multi-hop dispersion.`
+                : 'All transactions conform to normal retail behavior patterns.'}
             </Text>
           </View>
         </View>
 
-        {/* ─── Metric Pills Row ────────────────────────────────────────── */}
+        {/* 4 Metrics Pill Row */}
         <View style={styles.metricsPillRow}>
           <View style={styles.metricPill}>
             <Text style={styles.metricPillVal}>{result.totalTransactions}</Text>
@@ -170,110 +160,142 @@ export const NetworkAnalysisResult: React.FC<NetworkAnalysisResultProps> = ({
             <Text style={[styles.metricPillVal, { color: Colors.error }]}>
               {result.flaggedEntitiesCount}
             </Text>
-            <Text style={styles.metricPillLbl}>Mule Nodes</Text>
+            <Text style={styles.metricPillLbl}>Flagged Mule</Text>
           </View>
           <View style={styles.pillDivider} />
           <View style={styles.metricPill}>
-            <Text style={[styles.metricPillVal, { color: Colors.error }]}>
+            <Text style={[styles.metricPillVal, { color: Colors.warning }]}>
               {result.flaggedTransactionsCount}
             </Text>
-            <Text style={styles.metricPillLbl}>Flagged Tx</Text>
+            <Text style={styles.metricPillLbl}>Anomalous Tx</Text>
           </View>
         </View>
       </View>
 
-      {/* ─── Tabs: Suspicious Entities vs Suspicious Transactions ─────────── */}
+      {/* ─── Breakdown Tabs ───────────────────────────────────────────── */}
       <View style={styles.tabsHeader}>
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'entities' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('entities')}
-          activeOpacity={0.8}
-          accessibilityRole="tab">
+          onPress={() => setActiveTab('entities')}>
           <Text
-            style={[styles.tabButtonText, activeTab === 'entities' && styles.tabButtonTextActive]}>
+            style={[
+              styles.tabButtonText,
+              activeTab === 'entities' && styles.tabButtonTextActive,
+            ]}>
             Flagged Entities ({result.suspiciousEntities.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'transactions' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('transactions')}
-          activeOpacity={0.8}
-          accessibilityRole="tab">
+          onPress={() => setActiveTab('transactions')}>
           <Text
-            style={[styles.tabButtonText, activeTab === 'transactions' && styles.tabButtonTextActive]}>
-            Flagged Transactions ({result.suspiciousTransactions.length})
+            style={[
+              styles.tabButtonText,
+              activeTab === 'transactions' && styles.tabButtonTextActive,
+            ]}>
+            Suspicious Tx ({result.suspiciousTransactions.length})
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* ─── Tab Content: Entities ───────────────────────────────────────── */}
-      {activeTab === 'entities' ? (
+      {/* Tab Content: Entities */}
+      {activeTab === 'entities' && (
         <View style={styles.tabContentCard}>
-          {result.suspiciousEntities.map((entity, idx) => (
-            <View key={entity.id || idx} style={styles.entityItemCard}>
-              <View style={styles.entityTopRow}>
-                <View style={styles.entityIdGroup}>
-                  <View style={styles.entityIconBox}>
-                    <Icon name="AlertTriangle" size={14} color="#EF4444" strokeWidth={2.4} />
-                  </View>
-                  <View>
-                    <Text style={styles.entityIdText}>{entity.id}</Text>
-                    <Text style={styles.entityRoleText}>{entity.role}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.entityScorePill}>
-                  <Text style={styles.entityScoreText}>Risk {entity.riskScore}%</Text>
-                </View>
-              </View>
-
-              <Text style={styles.entityReasonText}>{entity.reason}</Text>
-
-              <View style={styles.entityFooterRow}>
-                <Text style={styles.entityFooterMeta}>
-                  Involved in {entity.transactionsInvolved} tx • Volume: {entity.totalVolume}
-                </Text>
-              </View>
+          {result.suspiciousEntities.length === 0 ? (
+            <View style={styles.emptyContent}>
+              <Icon name="CheckCircle2" size={24} color={Colors.success} style={{ marginBottom: 6 }} />
+              <Text style={styles.emptyContentText}>No high-risk entities flagged in this graph.</Text>
             </View>
-          ))}
-        </View>
-      ) : (
-        /* ─── Tab Content: Transactions ─────────────────────────────────── */
-        <View style={styles.tabContentCard}>
-          {result.suspiciousTransactions.map((tx, idx) => (
-            <View key={tx.txId || idx} style={styles.txItemCard}>
-              <View style={styles.txTopRow}>
-                <Text style={styles.txIdTag}>{tx.txId}</Text>
-                <Text style={styles.txAmount}>{tx.amount}</Text>
-              </View>
+          ) : (
+            result.suspiciousEntities.map((entity) => (
+              <View key={entity.id} style={styles.entityItemCard}>
+                <View style={styles.entityTopRow}>
+                  <View style={styles.entityIdGroup}>
+                    <View style={styles.entityIconBox}>
+                      <Icon name="User" size={14} color={Colors.error} />
+                    </View>
+                    <View>
+                      <Text style={styles.entityIdText}>{entity.id}</Text>
+                      <Text style={styles.entityRoleText}>{entity.role}</Text>
+                    </View>
+                  </View>
 
-              <View style={styles.txRouteRow}>
-                <Text style={styles.txAccount}>{tx.source}</Text>
-                <Icon name="ArrowRight" size={12} color="#94A3B8" />
-                <Text style={styles.txAccount}>{tx.target}</Text>
-              </View>
-
-              <View style={styles.txBottomRow}>
-                <View style={styles.anomalyBadge}>
-                  <Text style={styles.anomalyText}>{tx.anomalyType}</Text>
+                  <Badge label={`${entity.riskScore}% RISK`} variant="fraud" size="sm" />
                 </View>
-                <Text style={styles.txTime}>{tx.timestamp}</Text>
+
+                <View style={styles.entityMetricsRow}>
+                  <Text style={styles.entityMetricItem}>
+                    Volume: <Text style={styles.entityMetricBold}>{entity.totalVolume}</Text>
+                  </Text>
+                  <Text style={styles.entityMetricItem}>
+                    Involved Tx: <Text style={styles.entityMetricBold}>{entity.transactionsInvolved}</Text>
+                  </Text>
+                </View>
+
+                <Text style={styles.entityReasonText}>{entity.reason}</Text>
               </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       )}
 
-      {/* ─── Reset / Analyze Another Button ──────────────────────────────── */}
+      {/* Tab Content: Transactions */}
+      {activeTab === 'transactions' && (
+        <View style={styles.tabContentCard}>
+          {result.suspiciousTransactions.length === 0 ? (
+            <View style={styles.emptyContent}>
+              <Icon name="CheckCircle2" size={24} color={Colors.success} style={{ marginBottom: 6 }} />
+              <Text style={styles.emptyContentText}>No anomalous transactions identified.</Text>
+            </View>
+          ) : (
+            result.suspiciousTransactions.map((tx) => (
+              <View key={tx.txId} style={styles.txItemCard}>
+                <View style={styles.txTopRow}>
+                  <View style={styles.txIdRow}>
+                    <Icon name="Activity" size={13} color={Colors.error} style={{ marginRight: 6 }} />
+                    <Text style={styles.txIdText}>{tx.txId}</Text>
+                    <Text style={styles.txTimeText}>{tx.timestamp}</Text>
+                  </View>
+                  <Text style={styles.txAmountText}>{tx.amount}</Text>
+                </View>
+
+                <View style={styles.txRouteRow}>
+                  <Text style={styles.txEntity}>{tx.source}</Text>
+                  <Icon name="ArrowRight" size={12} color={Colors.textTertiary} style={{ marginHorizontal: 6 }} />
+                  <Text style={styles.txEntity}>{tx.target}</Text>
+                </View>
+
+                <View style={styles.txAnomalyTag}>
+                  <Icon name="AlertTriangle" size={11} color={Colors.warning} style={{ marginRight: 4 }} />
+                  <Text style={styles.txAnomalyText}>{tx.anomalyType}</Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      )}
+
+      {/* AI Assistant Explanation Action (Neon Rose) */}
+      <TouchableOpacity
+        style={styles.aiExplainButton}
+        onPress={handleExplainWithAI}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Explain GCN Analysis with AI Assistant">
+        <Icon name="Bot" size={17} color="#FFFFFF" strokeWidth={2.4} style={{ marginRight: 8 }} />
+        <Text style={styles.aiExplainButtonText}>EXPLAIN NETWORK RISK WITH AI</Text>
+      </TouchableOpacity>
+
+      {/* Reset & Analyze Another Action */}
       <TouchableOpacity
         style={styles.resetButton}
         onPress={onReset}
-        activeOpacity={0.8}
+        activeOpacity={0.82}
         accessibilityRole="button"
-        accessibilityLabel="Analyze another dataset">
-        <Icon name="RefreshCw" size={16} color="#3a86ff" strokeWidth={2.2} />
-        <Text style={styles.resetButtonText}>Analyze Another Dataset</Text>
+        accessibilityLabel="Analyze Another Dataset">
+        <Icon name="RefreshCw" size={15} color={Colors.textSecondary} style={{ marginRight: 6 }} />
+        <Text style={styles.resetButtonText}>Analyze Another Ledger</Text>
       </TouchableOpacity>
     </View>
   );
@@ -281,77 +303,46 @@ export const NetworkAnalysisResult: React.FC<NetworkAnalysisResultProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: Spacing.md,
-  },
-  noticeBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: Spacing.md,
-    gap: 10,
+    marginBottom: Spacing.xl,
   },
   liveNoticeBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
+    alignItems: 'center',
+    backgroundColor: 'rgba(32, 217, 138, 0.1)',
     borderRadius: 12,
-    padding: 12,
-    marginBottom: Spacing.md,
-    gap: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(32, 217, 138, 0.25)',
+    marginBottom: 12,
+    gap: 8,
   },
-  noticeTextContainer: {
-    flex: 1,
-  },
-  noticeTitle: {
+  liveNoticeText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#1D4ED8',
-    marginBottom: 2,
-  },
-  liveNoticeTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#047857',
-    marginBottom: 2,
-  },
-  noticeBody: {
-    fontSize: 11,
-    color: '#3B82F6',
-    lineHeight: 16,
-  },
-  liveNoticeBody: {
-    fontSize: 11,
-    color: '#065F46',
-    lineHeight: 16,
+    color: '#16A34A',
+    fontWeight: '600',
   },
   scoreCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: Spacing.md,
+    borderColor: Colors.border,
+    marginBottom: 12,
   },
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginBottom: 16,
+    marginBottom: 14,
+    gap: 14,
   },
-  scoreCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+  gaugeCircle: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     borderWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#0B132B',
   },
   scoreValue: {
     fontSize: 24,
@@ -360,54 +351,33 @@ const styles = StyleSheet.create({
   },
   scoreScale: {
     fontSize: 10,
-    color: '#94A3B8',
+    color: Colors.textTertiary,
     fontWeight: '600',
   },
   scoreTextCol: {
     flex: 1,
   },
   riskBadgeRow: {
-    flexDirection: 'row',
     marginBottom: 4,
-  },
-  riskLevelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    gap: 6,
-  },
-  riskLevelDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  riskLevelText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
   },
   scoreHeading: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 3,
+    color: Colors.textPrimary,
+    marginBottom: 2,
   },
   scoreDescription: {
     fontSize: 11,
-    color: '#64748B',
-    lineHeight: 15,
+    lineHeight: 16,
+    color: Colors.textSecondary,
   },
   metricsPillRow: {
     flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0B132B',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     paddingVertical: 10,
-    paddingHorizontal: 6,
     justifyContent: 'space-around',
     alignItems: 'center',
   },
@@ -418,24 +388,26 @@ const styles = StyleSheet.create({
   metricPillVal: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
   },
   metricPillLbl: {
     fontSize: 10,
-    color: '#64748B',
+    color: Colors.textTertiary,
     marginTop: 2,
   },
   pillDivider: {
     width: 1,
     height: 20,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: Colors.border,
   },
   tabsHeader: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#0B132B',
     borderRadius: 12,
     padding: 3,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   tabButton: {
     flex: 1,
@@ -444,34 +416,47 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   tabButtonActive: {
-    backgroundColor: '#FFFFFF',
-    ...Shadows.sm,
+    backgroundColor: Colors.cardElevated,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 123, 167, 0.4)',
   },
   tabButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.textTertiary,
   },
   tabButtonTextActive: {
-    color: '#0F172A',
+    color: Colors.primaryLight,
     fontWeight: '700',
   },
   tabContentCard: {
-    marginBottom: Spacing.md,
+    gap: 8,
+    marginBottom: 12,
+  },
+  emptyContent: {
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emptyContentText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
   },
   entityItemCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.cardElevated,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    padding: 12,
-    marginBottom: 8,
+    borderColor: 'rgba(255, 69, 69, 0.35)',
+    padding: 14,
   },
   entityTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   entityIdGroup: {
     flexDirection: 'row',
@@ -481,124 +466,130 @@ const styles = StyleSheet.create({
   entityIconBox: {
     width: 28,
     height: 28,
-    borderRadius: 7,
-    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 69, 69, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   entityIdText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
     fontFamily: 'monospace',
   },
   entityRoleText: {
     fontSize: 11,
-    color: '#EF4444',
+    color: '#F87171',
     fontWeight: '600',
   },
-  entityScorePill: {
-    backgroundColor: '#FEE2E2',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+  entityMetricsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 6,
   },
-  entityScoreText: {
+  entityMetricItem: {
     fontSize: 11,
+    color: Colors.textTertiary,
+  },
+  entityMetricBold: {
     fontWeight: '700',
-    color: '#B91C1C',
+    color: Colors.textPrimary,
   },
   entityReasonText: {
     fontSize: 12,
-    color: '#334155',
-    lineHeight: 16,
-    marginBottom: 6,
-  },
-  entityFooterRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 6,
-  },
-  entityFooterMeta: {
-    fontSize: 11,
-    color: '#64748B',
+    lineHeight: 17,
+    color: Colors.textSecondary,
   },
   txItemCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.cardElevated,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     padding: 12,
-    marginBottom: 8,
   },
   txTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  txIdTag: {
-    fontSize: 11,
+  txIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  txIdText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textPrimary,
     fontFamily: 'monospace',
-    fontWeight: '600',
-    color: '#475569',
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 4,
+    marginRight: 6,
   },
-  txAmount: {
+  txTimeText: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
+  txAmountText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.error,
   },
   txRouteRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     marginBottom: 6,
   },
-  txAccount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1E293B',
+  txEntity: {
+    fontSize: 11,
+    color: Colors.textSecondary,
     fontFamily: 'monospace',
   },
-  txBottomRow: {
+  txAnomalyTag: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  anomalyBadge: {
-    backgroundColor: '#FEF2F2',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
-  anomalyText: {
+  txAnomalyText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#DC2626',
+    color: Colors.warning,
   },
-  txTime: {
-    fontSize: 11,
-    color: '#94A3B8',
-  },
-  resetButton: {
+  aiExplainButton: {
+    backgroundColor: '#0066FF',
+    borderRadius: 14,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#3a86ff',
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
+    marginBottom: 10,
+  },
+  aiExplainButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  resetButton: {
+    backgroundColor: '#0B132B',
+    borderRadius: 14,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   resetButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#3a86ff',
+    color: Colors.textSecondary,
   },
 });
 

@@ -1,29 +1,19 @@
-/**
- * Root Navigator
- *
- * Switches between AuthNavigator and AppNavigator based on auth state.
- * Shows a loading screen while the initial auth check is in progress.
- */
-
 import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {StatusBar} from 'react-native';
-import {useAuth} from '../context/AuthContext';
-import AuthNavigator from './AuthNavigator';
+import { StatusBar } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
 import AppNavigator from './AppNavigator';
+import AuthNavigator from './AuthNavigator';
 import LoadingScreen from '../components/LoadingScreen';
-import {Colors} from '../theme/theme';
+import Colors from '../theme/colors';
 
 const RootNavigator: React.FC = () => {
-  const {isAuthenticated, isLoading} = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
       <>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={Colors.background}
-        />
+        <StatusBar barStyle="light-content" {...({ backgroundColor: Colors.background } as any)} />
         <LoadingScreen />
       </>
     );
@@ -31,10 +21,7 @@ const RootNavigator: React.FC = () => {
 
   return (
     <NavigationContainer>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={Colors.background}
-      />
+      <StatusBar barStyle="light-content" {...({ backgroundColor: Colors.background } as any)} />
       {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

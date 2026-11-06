@@ -1,111 +1,206 @@
 /**
- * Quick Actions Grid — FraudShield
+ * QuickActionsGrid — Premium Cybersecurity Action Matrix
  *
- * Section C: Dedicated Quick Actions grid organizing the 4 core workflows:
- * 1. Check a Message (paste text)
- * 2. Scan a Screenshot (OCR extraction)
- * 3. Detection History (view past scans)
- * 4. Protection Settings (manage rules)
+ * Balanced 2-column cyber grid:
+ * - 6 core threat defense modules in 3 symmetrical rows of 2
+ * - High-contrast neon icons, status badges, clear un-truncated titles
+ * - Matches FraudShield Cyber Edition design tokens (Colors, Typography)
  */
 
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import Colors from '../../../theme/colors';
 import Icon, { IconName } from '../../../components/Icon';
-import { Colors, Shadows, Spacing } from '../../../theme/theme';
 
-const PRIMARY_COLOR = '#3a86ff';
-
-interface ActionItem {
-  id: string;
-  icon: IconName;
-  iconBg: string;
-  iconColor: string;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}
-
-interface QuickActionsGridProps {
+export interface QuickActionsGridProps {
   onCheckMessage: () => void;
   onScanScreenshot: () => void;
   onViewHistory: () => void;
   onOpenSettings: () => void;
+  onOpenAssistant: () => void;
+  onOpenNetworkAnalysis?: () => void;
 }
 
-export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
+interface ActionItem {
+  icon: IconName;
+  label: string;
+  subtitle: string;
+  badge?: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  onPress: () => void;
+}
+
+const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   onCheckMessage,
   onScanScreenshot,
   onViewHistory,
   onOpenSettings,
+  onOpenAssistant,
+  onOpenNetworkAnalysis,
 }) => {
   const actions: ActionItem[] = [
     {
-      id: 'check_msg',
-      icon: 'FileText',
-      iconBg: '#EFF6FF',
-      iconColor: PRIMARY_COLOR,
-      title: 'Check a Message',
-      subtitle: 'Paste suspicious text',
+      icon: 'Scan',
+      label: 'SMS Scanner',
+      subtitle: 'Check text & links',
+      badge: 'AI SCAN',
+      color: Colors.primary,
+      bgColor: 'rgba(0, 123, 167, 0.12)',
+      borderColor: 'rgba(0, 123, 167, 0.28)',
       onPress: onCheckMessage,
     },
     {
-      id: 'scan_shot',
       icon: 'Image',
-      iconBg: '#EFF6FF',
-      iconColor: PRIMARY_COLOR,
-      title: 'Scan Screenshot',
-      subtitle: 'Extract text with OCR',
+      label: 'OCR Scan',
+      subtitle: 'Screenshot audit',
+      badge: 'VISION',
+      color: Colors.secondary,
+      bgColor: 'rgba(255, 45, 149, 0.12)',
+      borderColor: 'rgba(255, 45, 149, 0.28)',
       onPress: onScanScreenshot,
     },
     {
-      id: 'det_hist',
-      icon: 'Clock',
-      iconBg: '#F0FDF4',
-      iconColor: '#10B981',
-      title: 'Detection History',
-      subtitle: 'Review past scans',
-      onPress: onViewHistory,
+      icon: 'Bot',
+      label: 'AI Assistant',
+      subtitle: 'Security guidance',
+      badge: 'COPILOT',
+      color: Colors.secondary,
+      bgColor: 'rgba(255, 45, 149, 0.12)',
+      borderColor: 'rgba(255, 45, 149, 0.28)',
+      onPress: onOpenAssistant,
     },
     {
-      id: 'prot_set',
-      icon: 'Settings',
-      iconBg: '#F5F3FF',
-      iconColor: '#7C3AED',
-      title: 'Protection Settings',
-      subtitle: 'Manage security rules',
-      onPress: onOpenSettings,
+      icon: 'Clock',
+      label: 'Threat History',
+      subtitle: 'Audit logs & records',
+      badge: 'LOGS',
+      color: Colors.primary,
+      bgColor: 'rgba(0, 123, 167, 0.12)',
+      borderColor: 'rgba(0, 123, 167, 0.28)',
+      onPress: onViewHistory,
     },
   ];
 
+  if (onOpenNetworkAnalysis) {
+    actions.push({
+      icon: 'Activity',
+      label: 'Network Graph',
+      subtitle: 'Mule ring analysis',
+      badge: 'GCN',
+      color: Colors.primary,
+      bgColor: 'rgba(0, 123, 167, 0.12)',
+      borderColor: 'rgba(0, 123, 167, 0.28)',
+      onPress: onOpenNetworkAnalysis,
+    });
+  }
+
+  actions.push({
+    icon: 'Settings',
+    label: 'App Settings',
+    subtitle: 'Defense policies',
+    badge: 'CONFIG',
+    color: Colors.textSecondary,
+    bgColor: 'rgba(161, 161, 170, 0.08)',
+    borderColor: 'rgba(161, 161, 170, 0.22)',
+    onPress: onOpenSettings,
+  });
+
+  const fadeAnims = useRef(
+    actions.map(() => new Animated.Value(0)),
+  ).current;
+  const slideAnims = useRef(
+    actions.map(() => new Animated.Value(14)),
+  ).current;
+
+  useEffect(() => {
+    fadeAnims.forEach((anim, index) => {
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 350,
+        delay: index * 40,
+        useNativeDriver: true,
+      }).start();
+    });
+    slideAnims.forEach((anim, index) => {
+      Animated.timing(anim, {
+        toValue: 0,
+        duration: 350,
+        delay: index * 40,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [fadeAnims, slideAnims]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionHeading}>Quick Actions</Text>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionLabel}>Quick Actions</Text>
+        <Text style={styles.sectionBadge}>{actions.length} MODULES</Text>
+      </View>
 
       <View style={styles.grid}>
-        {actions.map((act) => (
-          <TouchableOpacity
-            key={act.id}
-            style={[styles.card, Shadows.card]}
-            onPress={act.onPress}
-            activeOpacity={0.82}
-            accessibilityRole="button"
-            accessibilityLabel={act.title}>
-            <View style={[styles.iconBox, { backgroundColor: act.iconBg }]}>
-              <Icon
-                name={act.icon}
-                size={22}
-                color={act.iconColor}
-                strokeWidth={2.3}
-              />
-            </View>
+        {actions.map((action, index) => (
+          <Animated.View
+            key={action.label}
+            style={[
+              styles.cardWrapper,
+              {
+                opacity: fadeAnims[index] || 1,
+                transform: [{ translateY: slideAnims[index] || 0 }],
+              },
+            ]}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={action.onPress}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}>
+              <View style={styles.cardTopRow}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: action.bgColor,
+                      borderColor: action.borderColor,
+                    },
+                  ]}>
+                  <Icon
+                    name={action.icon}
+                    size={18}
+                    color={action.color}
+                    strokeWidth={2.2}
+                  />
+                </View>
 
-            <View style={styles.textBox}>
-              <Text style={styles.cardTitle}>{act.title}</Text>
-              <Text style={styles.cardSubtitle} numberOfLines={1}>
-                {act.subtitle}
-              </Text>
-            </View>
-          </TouchableOpacity>
+                {action.badge ? (
+                  <View
+                    style={[
+                      styles.badge,
+                      {
+                        backgroundColor: action.bgColor,
+                        borderColor: action.borderColor,
+                      },
+                    ]}>
+                    <Text style={[styles.badgeText, { color: action.color }]}>
+                      {action.badge}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.cardBottom}>
+                <Text style={styles.actionLabel} numberOfLines={1}>
+                  {action.label}
+                </Text>
+                <Text style={styles.actionSubtitle} numberOfLines={1}>
+                  {action.subtitle}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
         ))}
       </View>
     </View>
@@ -114,14 +209,27 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: Spacing.md,
+    marginBottom: 16,
   },
-  sectionHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 10,
-    letterSpacing: -0.2,
+    paddingHorizontal: 2,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  sectionBadge: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Colors.textTertiary,
+    letterSpacing: 0.5,
   },
   grid: {
     flexDirection: 'row',
@@ -129,38 +237,56 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     rowGap: 10,
   },
-  card: {
+  cardWrapper: {
     width: '48.5%',
-    backgroundColor: '#FFFFFF',
+  },
+  actionCard: {
+    backgroundColor: Colors.card,
     borderRadius: 14,
-    padding: 14,
+    padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    minHeight: 105,
+    borderColor: Colors.border,
+    minHeight: 104,
     justifyContent: 'space-between',
   },
-  iconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    justifyContent: 'center',
+  cardTopRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  textBox: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardTitle: {
-    fontSize: 14,
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  cardBottom: {
+    marginTop: 2,
+  },
+  actionLabel: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.white,
+    letterSpacing: -0.2,
     marginBottom: 2,
-    letterSpacing: -0.1,
   },
-  cardSubtitle: {
+  actionSubtitle: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textTertiary,
   },
 });
 

@@ -1,19 +1,11 @@
 /**
- * AssistantChatScreen — FraudShield
+ * Premium AI Cybersecurity Assistant — FraudShield Redesign
  *
- * Context-aware conversational AI assistant for:
- * 1. "Explain This Detection" — translates detector findings, classification,
- *    and URL analysis into plain, non-technical explanations.
- * 2. "Fraud Help Assistant" — guides users through scam triage, panic reduction,
- *    and step-by-step recovery actions (Helpline 1930 / cybercrime.gov.in).
- *
- * Design:
- * - FraudShield primary color: #3a86ff
- * - Pure Lucide icons
- * - Safe context preview banner
- * - Interactive action checklist with tap-to-complete
- * - Quick suggested chips
- * - Zero secrets warning and privacy guardrails
+ * Cerulean Blue + Neon Rose theme with:
+ * - Animated AI avatar with pulsing neon rings
+ * - Typing indicator animation
+ * - Modern chat bubbles with glassmorphism
+ * - Smooth message entrance animations
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -26,20 +18,21 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Linking,
-  SafeAreaView,
   StatusBar,
+  Alert,
+  Animated,
+  Easing,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Icon from '../../components/Icon';
 import { Colors, Typography, Spacing, Shadows } from '../../theme/theme';
+import { TypingIndicator } from '../../components/animations';
 import assistantApi, {
   AssistantDetectionContext,
   AssistantChatResponse,
 } from '../../api/assistantApi';
-
-const PRIMARY_COLOR = '#3a86ff';
 
 export interface ChatMessage {
   id: string;
@@ -59,26 +52,28 @@ export type AssistantChatRouteParams = {
 };
 
 const DEFAULT_GENERAL_SUGGESTIONS = [
+  'Is this message a scam?',
+  'How do I identify fake websites?',
+  'How can I protect my bank account?',
   'I clicked a suspicious link.',
   'I shared an OTP or password.',
   'I sent money to a scammer.',
-  'I installed a suspicious app.',
-  'How can I report a scam?',
-  'How can I check if a message is genuine?',
 ];
 
 const DEFAULT_DETECTION_SUGGESTIONS = [
-  'Why is this link suspicious?',
-  'Could this be a genuine bank message?',
+  'Why was this message flagged?',
+  'How do I identify fake websites?',
   'What should I do next?',
-  'How do I report this sender?',
+  'How do I report this sender safely?',
 ];
 
 export const AssistantChatScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ params: AssistantChatRouteParams }, 'params'>>();
 
-  const mode = route.params?.mode || (route.params?.detectionContext ? 'detection_explanation' : 'general_help');
+  const mode =
+    route.params?.mode ||
+    (route.params?.detectionContext ? 'detection_explanation' : 'general_help');
   const detectionContext = route.params?.detectionContext;
   const initialPrompt = route.params?.initialPrompt;
 
@@ -90,23 +85,24 @@ export const AssistantChatScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
   const [activeSuggestions, setActiveSuggestions] = useState<string[]>(
-    mode === 'detection_explanation' ? DEFAULT_DETECTION_SUGGESTIONS : DEFAULT_GENERAL_SUGGESTIONS,
+    mode === 'detection_explanation'
+      ? DEFAULT_DETECTION_SUGGESTIONS
+      : DEFAULT_GENERAL_SUGGESTIONS,
   );
   const [isContextCollapsed, setIsContextCollapsed] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
+  
 
   // Initialize initial greeting & prompt
   useEffect(() => {
     let initialGreetingText = '';
 
     if (mode === 'detection_explanation' && detectionContext) {
-      const isThreat = detectionContext.classification === 'FRAUD' || (detectionContext.riskScore || 0) >= 0.70;
       const scorePct = Math.round((detectionContext.riskScore || 0) * 100);
-
-      initialGreetingText = `Hello! I'm your FraudShield Assistant. I have analyzed this detection (${scorePct}% risk). Ask me why this message was flagged, what suspicious signs were found, or how to verify the sender safely.`;
+      initialGreetingText = `Hello! I'm your FraudShield AI Assistant. I have evaluated this detection (${scorePct}% threat confidence). Ask me why this message was flagged, what suspicious indicators were found, or how to protect yourself.`;
     } else {
-      initialGreetingText = `Hello! I'm your FraudShield Security Assistant. If you received a suspicious message, clicked a link, or suspect you might be targeted by a scam, I'm here to help you assess what happened and take safe recovery steps.`;
+      initialGreetingText = `Hello! I'm your FraudShield AI Cybersecurity Assistant. If you received a suspicious message, clicked an unverified link, or want to protect your accounts from fraud, I'm here 24/7 to guide you through recovery steps.`;
     }
 
     const initialMsg: ChatMessage = {
@@ -122,7 +118,6 @@ export const AssistantChatScreen: React.FC = () => {
 
     setMessages([initialMsg]);
 
-    // If an initial prompt was requested automatically (e.g., from tapping "Understand this warning")
     if (initialPrompt && initialPrompt.trim()) {
       handleSendMessage(initialPrompt.trim());
     }
@@ -147,13 +142,11 @@ export const AssistantChatScreen: React.FC = () => {
     setMessages((prev) => [...prev, newMsg]);
     setIsLoading(true);
 
-    // Scroll to bottom
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
 
     try {
-      // Build recent conversation history (last 6 messages max)
       const history = messages.slice(-6).map((m) => ({
         role: (m.sender === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: m.text,
@@ -174,7 +167,7 @@ export const AssistantChatScreen: React.FC = () => {
       const botMsg: ChatMessage = {
         id: `bot_${Date.now()}`,
         sender: 'assistant',
-        text: res.response || "I'm here to help. Could you provide a bit more detail?",
+        text: res.response || "I'm here to assist. Could you provide a bit more detail?",
         timestamp: Date.now(),
         suggestedFollowUps: res.suggestedFollowUps || [],
         actionChecklist: res.actionChecklist || [],
@@ -191,10 +184,13 @@ export const AssistantChatScreen: React.FC = () => {
       const errorMsg: ChatMessage = {
         id: `bot_err_${Date.now()}`,
         sender: 'assistant',
-        text: 'Unable to reach the assistant service at this moment. If you have transferred money or shared bank details, please call the National Cybercrime Helpline 1930 immediately.',
+        text: 'Unable to reach the assistant service at this moment. If you have transferred funds or shared bank credentials, call the National Cybercrime Helpline 1930 immediately.',
         timestamp: Date.now(),
         isError: true,
-        actionChecklist: ['Call National Cybercrime Helpline 1930', 'Contact your bank fraud desk'],
+        actionChecklist: [
+          'Call National Cybercrime Helpline 1930',
+          'Contact your bank 24x7 fraud desk to freeze transactions',
+        ],
         urgency: 'high',
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -206,6 +202,33 @@ export const AssistantChatScreen: React.FC = () => {
     }
   };
 
+  const handleClearConversation = () => {
+    Alert.alert(
+      'Clear Conversation',
+      'Are you sure you want to start a fresh chat session?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            setConversationId(`conv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
+            setMessages([
+              {
+                id: `bot_init_${Date.now()}`,
+                sender: 'assistant',
+                text: "Conversation reset. How can I assist with your cybersecurity protection today?",
+                timestamp: Date.now(),
+                suggestedFollowUps: DEFAULT_GENERAL_SUGGESTIONS,
+              },
+            ]);
+            setActiveSuggestions(DEFAULT_GENERAL_SUGGESTIONS);
+          },
+        },
+      ],
+    );
+  };
+
   const toggleChecklistStep = (stepText: string) => {
     setCompletedSteps((prev) => ({
       ...prev,
@@ -214,15 +237,7 @@ export const AssistantChatScreen: React.FC = () => {
   };
 
   const handleCallHelpline = () => {
-    Linking.openURL('tel:1930').catch(() => {
-      // ignore
-    });
-  };
-
-  const handleOpenCyberPortal = () => {
-    Linking.openURL('https://cybercrime.gov.in/').catch(() => {
-      // ignore
-    });
+    Linking.openURL('tel:1930').catch(() => {});
   };
 
   // Render individual message item
@@ -238,7 +253,7 @@ export const AssistantChatScreen: React.FC = () => {
         ]}>
         {!isUser && (
           <View style={styles.assistantAvatar}>
-            <Icon name="Bot" size={16} color="#FFFFFF" strokeWidth={2.4} />
+            <Icon name="Bot" size={16} color={Colors.secondary} strokeWidth={2.4} />
           </View>
         )}
 
@@ -248,11 +263,11 @@ export const AssistantChatScreen: React.FC = () => {
             isUser ? styles.userBubble : styles.assistantBubble,
             item.isError && styles.errorBubble,
           ]}>
-          {/* Header if urgent */}
+          {/* Urgent Warning Header */}
           {!isUser && isUrgent && (
             <View style={styles.urgentBadgeRow}>
-              <Icon name="AlertTriangle" size={13} color="#DC2626" strokeWidth={2.4} style={{ marginRight: 4 }} />
-              <Text style={styles.urgentBadgeText}>URGENT SAFETY ACTION REQUIRED</Text>
+              <Icon name="AlertTriangle" size={13} color={Colors.error} strokeWidth={2.4} style={{ marginRight: 6 }} />
+              <Text style={styles.urgentBadgeText}>URGENT ACTION REQUIRED</Text>
             </View>
           )}
 
@@ -267,7 +282,7 @@ export const AssistantChatScreen: React.FC = () => {
           {/* Action Checklist */}
           {item.actionChecklist && item.actionChecklist.length > 0 && (
             <View style={styles.checklistContainer}>
-              <Text style={styles.checklistTitle}>Recommended Action Steps:</Text>
+              <Text style={styles.checklistTitle}>RECOMMENDED RECOVERY ACTIONS:</Text>
               {item.actionChecklist.map((step, idx) => {
                 const isChecked = !!completedSteps[step];
                 return (
@@ -281,7 +296,9 @@ export const AssistantChatScreen: React.FC = () => {
                         styles.checkboxBox,
                         isChecked && styles.checkboxBoxChecked,
                       ]}>
-                      {isChecked && <Icon name="Check" size={12} color="#FFFFFF" strokeWidth={3} />}
+                      {isChecked && (
+                        <Icon name="Check" size={11} color="#FFFFFF" strokeWidth={3} />
+                      )}
                     </View>
                     <Text
                       style={[
@@ -313,8 +330,8 @@ export const AssistantChatScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <StatusBar barStyle="light-content" />
 
       {/* ─── Screen Header ─────────────────────────────────────────── */}
       <View style={styles.header}>
@@ -323,30 +340,45 @@ export const AssistantChatScreen: React.FC = () => {
           onPress={() => navigation.goBack()}
           accessibilityRole="button"
           accessibilityLabel="Back">
-          <Icon name="ChevronLeft" size={24} color="#0F172A" strokeWidth={2.4} />
+          <Icon name="ChevronLeft" size={20} color={Colors.textPrimary} strokeWidth={2.4} />
         </TouchableOpacity>
 
         <View style={styles.headerTitleGroup}>
           <View style={styles.headerTitleRow}>
-            <Text style={styles.headerTitle}>FraudShield Assistant</Text>
-            <View style={styles.liveDot} />
+            <Text style={styles.headerTitle}>FraudShield AI</Text>
+            <View style={styles.liveBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>LIVE</Text>
+            </View>
           </View>
           <Text style={styles.headerSubtitle}>
-            {mode === 'detection_explanation' ? 'Explaining Detection' : 'Fraud Help & Recovery'}
+            {mode === 'detection_explanation'
+              ? 'Analyzing Detection Findings'
+              : 'Cyber Defense & Scam Triage'}
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.helplineQuickBtn}
-          onPress={handleCallHelpline}
-          accessibilityRole="button"
-          accessibilityLabel="Dial 1930 Cybercrime Helpline">
-          <Icon name="Phone" size={14} color="#DC2626" strokeWidth={2.4} style={{ marginRight: 4 }} />
-          <Text style={styles.helplineQuickBtnText}>1930</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={handleClearConversation}
+            accessibilityRole="button"
+            accessibilityLabel="Clear chat">
+            <Icon name="Trash2" size={16} color={Colors.textTertiary} strokeWidth={2} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.helplineQuickBtn}
+            onPress={handleCallHelpline}
+            accessibilityRole="button"
+            accessibilityLabel="Dial 1930 Cybercrime Helpline">
+            <Icon name="Phone" size={12} color="#FFFFFF" strokeWidth={2.4} style={{ marginRight: 3 }} />
+            <Text style={styles.helplineQuickBtnText}>1930</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* ─── Detection Context Banner (if in detection_explanation mode) ─ */}
+      {/* ─── Detection Context Banner (if present) ──────────────────── */}
       {mode === 'detection_explanation' && detectionContext && (
         <View style={styles.detectionBanner}>
           <TouchableOpacity
@@ -356,15 +388,21 @@ export const AssistantChatScreen: React.FC = () => {
             <View style={styles.detectionBannerTitleRow}>
               <Icon
                 name={
-                  (detectionContext.riskScore || 0) >= 0.70 ? 'AlertTriangle' : 'CheckCircle2'
+                  (detectionContext.riskScore || 0) >= 0.70
+                    ? 'AlertTriangle'
+                    : 'CheckCircle2'
                 }
-                size={16}
-                color={(detectionContext.riskScore || 0) >= 0.70 ? '#DC2626' : '#059669'}
+                size={15}
+                color={
+                  (detectionContext.riskScore || 0) >= 0.70
+                    ? Colors.error
+                    : Colors.success
+                }
                 strokeWidth={2.4}
                 style={{ marginRight: 6 }}
               />
               <Text style={styles.detectionBannerTitle}>
-                Referenced Detection ({detectionContext.source || 'Manual Scan'})
+                Referenced Context ({detectionContext.source || 'Manual Scan'})
               </Text>
             </View>
 
@@ -388,8 +426,8 @@ export const AssistantChatScreen: React.FC = () => {
               </View>
               <Icon
                 name={isContextCollapsed ? 'ChevronRight' : 'X'}
-                size={14}
-                color="#64748B"
+                size={13}
+                color={Colors.textTertiary}
                 strokeWidth={2}
                 style={{ marginLeft: 6 }}
               />
@@ -433,14 +471,14 @@ export const AssistantChatScreen: React.FC = () => {
             isLoading ? (
               <View style={styles.loadingContainer}>
                 <View style={styles.assistantAvatar}>
-                  <Icon name="Bot" size={16} color="#FFFFFF" strokeWidth={2.4} />
+                  <Icon name="Bot" size={16} color={Colors.secondary} strokeWidth={2.4} />
                 </View>
                 <View style={styles.typingBubble}>
-                  <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-                  <Text style={styles.typingText}>FraudShield is analyzing...</Text>
+                  <TypingIndicator color={Colors.secondary} />
+                  <Text style={styles.typingText}>Analyzing...</Text>
                 </View>
               </View>
-            ) : null
+            ) : undefined
           }
         />
 
@@ -466,30 +504,19 @@ export const AssistantChatScreen: React.FC = () => {
           </View>
         )}
 
-        {/* ─── Safety Notice ─────────────────────────────────────────── */}
-        <View style={styles.privacyNoticeRow}>
-          <Icon name="LockKeyhole" size={11} color="#64748B" strokeWidth={2} style={{ marginRight: 4 }} />
-          <Text style={styles.privacyNoticeText}>
-            Never share OTPs, PINs, or passwords in chat. Official helplines never ask for them.
-          </Text>
-        </View>
-
         {/* ─── Message Composer ───────────────────────────────────────── */}
         <View style={styles.composerContainer}>
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.textInput}
               placeholder="Ask a question or describe what happened..."
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={Colors.placeholder}
               value={inputText}
               onChangeText={setInputText}
               multiline
               maxLength={1500}
               editable={!isLoading}
             />
-            {inputText.length > 0 && (
-              <Text style={styles.charCount}>{inputText.length}/1500</Text>
-            )}
           </View>
 
           <TouchableOpacity
@@ -502,12 +529,7 @@ export const AssistantChatScreen: React.FC = () => {
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="Send message">
-            <Icon
-              name="Send"
-              size={18}
-              color="#FFFFFF"
-              strokeWidth={2.4}
-            />
+            <Icon name="Send" size={17} color="#FFFFFF" strokeWidth={2.4} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -518,11 +540,11 @@ export const AssistantChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
   },
   keyboardContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.background,
   },
 
   // Header
@@ -531,15 +553,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: Colors.border,
   },
   backButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -550,45 +574,75 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.white,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 45, 149, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
   },
   liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#10B981',
-    marginLeft: 6,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.secondary,
+  },
+  liveText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: Colors.secondary,
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 11,
+    color: Colors.textTertiary,
     marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   helplineQuickBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 10,
+    backgroundColor: Colors.error,
+    paddingHorizontal: 9,
     paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#FECACA',
+    borderRadius: 8,
   },
   helplineQuickBtnText: {
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '700',
-    color: '#DC2626',
   },
 
   // Detection Context Banner
   detectionBanner: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: Colors.border,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
@@ -603,62 +657,67 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   detectionBannerTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#1E293B',
-    flex: 1,
+    color: Colors.textSecondary,
   },
   detectionBannerRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   detectionScoreBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
   },
   badgeDanger: {
-    backgroundColor: '#FEE2E2',
-  },
-  badgeSafe: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: 'rgba(255, 69, 69, 0.15)',
+    borderColor: 'rgba(255, 69, 69, 0.35)',
   },
   badgeDangerText: {
-    fontSize: 11,
+    color: Colors.error,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#DC2626',
+  },
+  badgeSafe: {
+    backgroundColor: 'rgba(32, 217, 138, 0.15)',
+    borderColor: 'rgba(32, 217, 138, 0.35)',
   },
   badgeSafeText: {
-    fontSize: 11,
+    color: Colors.success,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#16A34A',
+  },
+  detectionScoreBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   detectionBannerBody: {
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: Colors.border,
   },
   detectionPreviewText: {
     fontSize: 12,
-    color: '#475569',
+    color: Colors.textPrimary,
     fontStyle: 'italic',
     marginBottom: 4,
   },
   reasonsList: {
-    marginTop: 2,
+    gap: 2,
   },
   reasonBullet: {
     fontSize: 11,
-    color: '#64748B',
-    lineHeight: 16,
+    color: Colors.textTertiary,
   },
 
   // Message List
   messageListContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
   },
   messageRow: {
     flexDirection: 'row',
@@ -672,235 +731,207 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   assistantAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: PRIMARY_COLOR,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#0B132B',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   messageBubble: {
     maxWidth: '82%',
+    padding: 13,
     borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  userBubble: {
-    backgroundColor: PRIMARY_COLOR,
-    borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 4,
+    backgroundColor: '#0B132B',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.sm,
+    borderColor: 'rgba(0, 240, 255, 0.18)',
+    borderBottomLeftRadius: 4,
+  },
+  userBubble: {
+    backgroundColor: '#0066FF',
+    borderBottomRightRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
   },
   errorBubble: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    borderColor: 'rgba(255, 69, 69, 0.4)',
+    backgroundColor: 'rgba(255, 69, 69, 0.08)',
   },
-  messageText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  userMessageText: {
-    color: '#FFFFFF',
-  },
-  assistantMessageText: {
-    color: '#0F172A',
-  },
-  timestampText: {
-    fontSize: 10,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  userTimestampText: {
-    color: '#E0E7FF',
-  },
-  assistantTimestampText: {
-    color: '#94A3B8',
-  },
-
-  // Urgent Badge
   urgentBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   urgentBadgeText: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#DC2626',
-    letterSpacing: 0.3,
+    fontWeight: '700',
+    color: Colors.error,
+    letterSpacing: 0.5,
+  },
+  messageText: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  assistantMessageText: {
+    color: Colors.textPrimary,
+  },
+  userMessageText: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  timestampText: {
+    fontSize: 10,
+    marginTop: 6,
+    alignSelf: 'flex-end',
+  },
+  assistantTimestampText: {
+    color: Colors.textTertiary,
+  },
+  userTimestampText: {
+    color: 'rgba(255, 255, 255, 0.6)',
   },
 
-  // Checklist
+  // Checklist inside AI Bubble
   checklistContainer: {
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: 12,
+    padding: 10,
     marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   checklistTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#334155',
-    marginBottom: 6,
+    color: Colors.textTertiary,
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
   checklistItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 6,
+    paddingVertical: 5,
   },
   checklistItemDone: {
-    backgroundColor: '#F1F5F9',
-    borderColor: '#CBD5E1',
-    opacity: 0.7,
+    opacity: 0.6,
   },
   checkboxBox: {
     width: 18,
     height: 18,
-    borderRadius: 4,
+    borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#94A3B8',
+    borderColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
-    backgroundColor: '#FFFFFF',
   },
   checkboxBoxChecked: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+    backgroundColor: Colors.primary,
   },
   checklistText: {
-    fontSize: 12,
-    color: '#1E293B',
     flex: 1,
-    lineHeight: 17,
+    fontSize: 12,
+    color: Colors.textPrimary,
   },
   checklistTextDone: {
     textDecorationLine: 'line-through',
-    color: '#64748B',
+    color: Colors.textTertiary,
   },
 
-  // Typing indicator
+  // Loading indicator
   loadingContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-end',
+    marginBottom: 16,
   },
   typingBubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    backgroundColor: Colors.card,
     borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
   },
   typingText: {
     fontSize: 12,
-    color: '#64748B',
-    marginLeft: 8,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
   },
 
-  // Suggestions Chips
+  // Suggested Prompts Chips
   chipsSection: {
-    paddingVertical: 6,
-    backgroundColor: '#F8FAFC',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   chipsContainer: {
     paddingHorizontal: 16,
+    gap: 8,
   },
   chipButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    paddingHorizontal: 12,
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: 12,
+    paddingHorizontal: 13,
     paddingVertical: 7,
-    borderRadius: 16,
-    marginRight: 8,
-    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   chipText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#1E293B',
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 
-  // Privacy notice
-  privacyNoticeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    backgroundColor: '#F8FAFC',
-  },
-  privacyNoticeText: {
-    fontSize: 10,
-    color: '#64748B',
-  },
-
-  // Composer
+  // Bottom Composer
   composerContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#030712',
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: Colors.border,
+    gap: 10,
   },
   inputWrapper: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 20,
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 8,
-    minHeight: 40,
-    maxHeight: 110,
-    marginRight: 8,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
+    minHeight: 44,
+    maxHeight: 100,
+    justifyContent: 'center',
   },
   textInput: {
     fontSize: 14,
-    lineHeight: 20,
-    color: '#0F172A',
-    padding: 0,
-  },
-  charCount: {
-    fontSize: 10,
-    color: '#94A3B8',
-    alignSelf: 'flex-end',
-    marginTop: 2,
+    color: Colors.textPrimary,
+    paddingVertical: 0,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: PRIMARY_COLOR,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
+    
   },
   sendButtonDisabled: {
-    backgroundColor: '#CBD5E1',
+    opacity: 0.4,
   },
 });
 

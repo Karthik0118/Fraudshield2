@@ -246,6 +246,5 @@ describe('6. Security Awareness & Negation-Aware Pattern Matching', () => {
     expect(result.hasUrl).toBe(true);
     expect(result.reasons.some((r) => r.includes('Mixed-content warning'))).toBe(true);
   });
+  });
 });
-});
-

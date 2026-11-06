@@ -65,7 +65,7 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({
     <View style={[styles.card, Shadows.card]}>
       <View style={styles.topRow}>
         <View style={styles.spinnerBox}>
-          <ActivityIndicator size="small" color="#3a86ff" />
+          <ActivityIndicator size="small" color={Colors.primary} />
         </View>
         <View style={styles.topTextContainer}>
           <Text style={styles.topTitle}>Analyzing Transaction Network...</Text>
@@ -141,11 +141,11 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     marginBottom: Spacing.md,
   },
   topRow: {
@@ -157,7 +157,9 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(0, 123, 167, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 123, 167, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -168,29 +170,31 @@ const styles = StyleSheet.create({
   topTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
   },
   topSubtitle: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textSecondary,
     marginTop: 1,
   },
   percentText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#3a86ff',
+    color: Colors.primaryLight,
     marginLeft: 8,
   },
   progressBarTrack: {
     height: 6,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#0B132B',
     borderRadius: 3,
     overflow: 'hidden',
     marginBottom: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#3a86ff',
+    backgroundColor: Colors.primary,
     borderRadius: 3,
   },
   stepsContainer: {
@@ -215,25 +219,25 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.success,
   },
   nodeDotActive: {
-    backgroundColor: '#3a86ff',
+    backgroundColor: Colors.primary,
     borderWidth: 2,
-    borderColor: '#BFDBFE',
+    borderColor: 'rgba(0, 240, 255, 0.4)',
   },
   nodeDotPending: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#0B132B',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: Colors.border,
   },
   pulseInnerDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
   },
   pendingStepNum: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: Colors.textTertiary,
   },
   connectingLine: {
     width: 2,
@@ -244,7 +248,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.success,
   },
   connectingLinePending: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: Colors.border,
   },
   stageTextCol: {
     flex: 1,
@@ -257,18 +261,18 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   stageTitleActive: {
-    color: '#3a86ff',
+    color: Colors.primaryLight,
     fontWeight: '700',
   },
   stageTitleCompleted: {
-    color: '#0F172A',
+    color: Colors.textPrimary,
   },
   stageTitlePending: {
-    color: '#94A3B8',
+    color: Colors.textTertiary,
   },
   stageDescription: {
     fontSize: 11,
-    color: '#64748B',
+    color: Colors.textSecondary,
     lineHeight: 15,
   },
 });

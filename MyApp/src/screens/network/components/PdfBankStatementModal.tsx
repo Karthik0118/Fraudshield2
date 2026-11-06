@@ -537,7 +537,7 @@ export const PdfBankStatementModal: React.FC<PdfBankStatementModalProps> = ({
                   Pick any PDF bank statement (.pdf) from your phone storage, file manager, or computer
                 </Text>
               </View>
-              <Icon name="ChevronRight" size={20} color="#2563EB" />
+              <Icon name="ChevronRight" size={20} color="#000000" />
             </TouchableOpacity>
 
             {/* Divider */}
@@ -560,7 +560,7 @@ export const PdfBankStatementModal: React.FC<PdfBankStatementModalProps> = ({
                 )
               }>
               <View style={styles.optionIconBox}>
-                <Icon name="FileText" size={24} color="#2563EB" strokeWidth={2.2} />
+                <Icon name="FileText" size={24} color="#000000" strokeWidth={2.2} />
               </View>
               <View style={styles.optionContent}>
                 <View style={styles.optionTitleRow}>
@@ -659,7 +659,7 @@ export const PdfBankStatementModal: React.FC<PdfBankStatementModalProps> = ({
               <Icon
                 name={showManualTextInput ? 'ChevronRight' : 'Edit3'}
                 size={16}
-                color="#2563EB"
+                color="#000000"
               />
               <Text style={styles.toggleTextInputBtnText}>
                 {showManualTextInput
@@ -701,7 +701,7 @@ export const PdfBankStatementModal: React.FC<PdfBankStatementModalProps> = ({
               <Icon
                 name={showBase64Upload ? 'ChevronRight' : 'FileText'}
                 size={16}
-                color="#2563EB"
+                color="#000000"
               />
               <Text style={styles.toggleTextInputBtnText}>
                 {showBase64Upload
@@ -757,7 +757,7 @@ export const PdfBankStatementModal: React.FC<PdfBankStatementModalProps> = ({
         {step === 'UPLOADING' && (
           <View style={styles.uploadingCenter}>
             <View style={styles.uploadingCard}>
-              <ActivityIndicator size="large" color="#2563EB" style={{ marginBottom: 16 }} />
+              <ActivityIndicator size="large" color="#000000" style={{ marginBottom: 16 }} />
 
               <Text style={styles.uploadingFileName}>{selectedFileName}</Text>
               <Text style={styles.uploadingFileSize}>{fileSizeStr}</Text>
@@ -829,7 +829,7 @@ export const PdfBankStatementModal: React.FC<PdfBankStatementModalProps> = ({
 
             {/* Instruction banner */}
             <View style={styles.reviewInstructions}>
-              <Icon name="Info" size={14} color="#1D4ED8" />
+              <Icon name="Info" size={14} color="#000000" />
               <Text style={styles.reviewInstructionsText}>
                 Review extracted records below. Tap direction badge to switch Debit/Credit, edit amounts,
                 or delete rows before running fraud detection.
@@ -951,7 +951,7 @@ export const PdfBankStatementModal: React.FC<PdfBankStatementModalProps> = ({
                 style={styles.addTxRowBtn}
                 activeOpacity={0.8}
                 onPress={handleAddManualRow}>
-                <Icon name="Edit3" size={14} color="#2563EB" />
+                <Icon name="Edit3" size={14} color="#000000" />
                 <Text style={styles.addTxRowBtnText}>+ Add Missing Transaction Record</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -993,7 +993,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
@@ -1077,11 +1077,11 @@ const styles = StyleSheet.create({
   deviceHeroUploadCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(0, 123, 167, 0.1)',
     borderRadius: 14,
     padding: 14,
     borderWidth: 1.8,
-    borderColor: '#3B82F6',
+    borderColor: 'rgba(0, 240, 255, 0.4)',
     borderStyle: 'dashed',
     marginBottom: 14,
     ...Shadows.card,
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0066FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1108,7 +1108,7 @@ const styles = StyleSheet.create({
   deviceHeroTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1E3A8A',
+    color: Colors.white,
   },
   deviceHeroBadge: {
     backgroundColor: '#DBEAFE',
@@ -1119,7 +1119,7 @@ const styles = StyleSheet.create({
   deviceHeroBadgeText: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#1D4ED8',
+    color: '#FFFFFF',
   },
   deviceHeroSubtitle: {
     fontSize: 11,
@@ -1146,7 +1146,7 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -1155,14 +1155,14 @@ const styles = StyleSheet.create({
     ...Shadows.card,
   },
   optionCardHighlight: {
-    borderColor: '#93C5FD',
-    backgroundColor: '#F8FAFF',
+    borderColor: 'rgba(0, 123, 167, 0.5)',
+    backgroundColor: 'rgba(0, 123, 167, 0.08)',
   },
   optionIconBox: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(0, 123, 167, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1180,7 +1180,7 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.white,
   },
   verifiedBankBadge: {
     backgroundColor: '#EFF6FF',
@@ -1191,7 +1191,7 @@ const styles = StyleSheet.create({
   verifiedBankBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#FFFFFF',
   },
   optionSubtitle: {
     fontSize: 11,
@@ -1222,11 +1222,11 @@ const styles = StyleSheet.create({
   },
   toggleTextInputBtnText: {
     fontSize: 13,
-    color: '#2563EB',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   manualTextSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
@@ -1252,7 +1252,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   extractPastedBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0066FF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1275,7 +1275,7 @@ const styles = StyleSheet.create({
   },
   uploadingCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     borderRadius: 18,
     padding: 24,
     alignItems: 'center',
@@ -1304,13 +1304,13 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0066FF',
     borderRadius: 4,
   },
   progressPercentText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#FFFFFF',
     marginBottom: 14,
   },
   progressStageText: {
@@ -1340,7 +1340,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewHeaderCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
@@ -1423,7 +1423,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   txReviewRowCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
@@ -1515,7 +1515,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   channelChipActive: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0066FF',
     borderColor: '#2563EB',
   },
   channelChipText: {
@@ -1578,12 +1578,12 @@ const styles = StyleSheet.create({
   addTxRowBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563EB',
+    color: '#FFFFFF',
   },
   reviewBottomActions: {
     flexDirection: 'row',
     padding: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     gap: 10,
@@ -1594,7 +1594,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#030712',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1608,7 +1608,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0066FF',
     borderRadius: 10,
     paddingVertical: 12,
     gap: 6,

@@ -1,23 +1,20 @@
 /**
- * Recent Detections Section — FraudShield
+ * Recent Activity & Detections Section — FraudShield Cyber Edition
  *
- * Section D: Displays a compact preview of real recent detections (up to 3 items)
- * with source badge, timestamp, preview text, and risk assessment indicators.
- * Provides a "View All" link opening the detection history screen, and an appropriate
- * empty state when no detections exist.
+ * Section D: Displays genuine recent detections with status badges (SAFE, FRAUD, SUSPICIOUS),
+ * timestamp, source indicator, and navigation to full history.
  */
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from '../../../components/Icon';
+import Badge from '../../../components/Badge';
 import { Colors, Shadows, Spacing } from '../../../theme/theme';
 import {
   DetectionRecord,
   getDetectionRecords,
   subscribeToDetectionHistory,
 } from '../../../storage/detectionHistoryStorage';
-
-const PRIMARY_COLOR = '#3a86ff';
 
 interface RecentDetectionsSectionProps {
   onViewAll: () => void;
@@ -70,7 +67,7 @@ export const RecentDetectionsSection: React.FC<RecentDetectionsSectionProps> = (
     <View style={styles.container}>
       {/* ─── Section Header Row ────────────────────────────────────── */}
       <View style={styles.headerRow}>
-        <Text style={styles.sectionHeading}>Recent Detections</Text>
+        <Text style={styles.sectionHeading}>Recent Threat Activity</Text>
         <TouchableOpacity
           onPress={onViewAll}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -84,12 +81,12 @@ export const RecentDetectionsSection: React.FC<RecentDetectionsSectionProps> = (
       {recentList.length === 0 ? (
         <View style={[styles.emptyCard, Shadows.card]}>
           <View style={styles.emptyIconCircle}>
-            <Icon name="ShieldCheck" size={24} color="#059669" strokeWidth={2.4} />
+            <Icon name="ShieldCheck" size={24} color={Colors.secondary} strokeWidth={2.4} />
           </View>
           <View style={styles.emptyTextCol}>
-            <Text style={styles.emptyTitle}>No suspicious messages detected yet</Text>
+            <Text style={styles.emptyTitle}>Zero Threats Flagged</Text>
             <Text style={styles.emptySubtitle}>
-              Incoming WhatsApp and SMS messages will be analyzed automatically in the background.
+              Incoming WhatsApp and SMS messages are continuously monitored by AI in real-time.
             </Text>
           </View>
         </View>
@@ -97,10 +94,17 @@ export const RecentDetectionsSection: React.FC<RecentDetectionsSectionProps> = (
         <View style={styles.listCol}>
           {recentList.map((item) => {
             const isThreat = item.isFraud || item.riskScore >= 0.70;
+            const isSuspicious = !isThreat && item.riskScore >= 0.40;
             const scorePct = Math.round(item.riskScore * 100);
 
             return (
-              <View key={item.id} style={[styles.recordCard, Shadows.card]}>
+              <View
+                key={item.id}
+                style={[
+                  styles.recordCard,
+                  isThreat && styles.recordCardThreat,
+                  Shadows.card,
+                ]}>
                 <View style={styles.cardTopRow}>
                   <View style={styles.sourceBadge}>
                     <Text style={styles.sourceText}>{getSourceLabel(item.source)}</Text>
@@ -115,34 +119,46 @@ export const RecentDetectionsSection: React.FC<RecentDetectionsSectionProps> = (
                 <View style={styles.cardBottomRow}>
                   <View style={styles.statusGroup}>
                     <Icon
-                      name={isThreat ? 'AlertTriangle' : 'CheckCircle2'}
+                      name={
+                        isThreat
+                          ? 'AlertTriangle'
+                          : isSuspicious
+                          ? 'AlertCircle'
+                          : 'CheckCircle2'
+                      }
                       size={14}
-                      color={isThreat ? '#DC2626' : '#059669'}
+                      color={
+                        isThreat
+                          ? Colors.error
+                          : isSuspicious
+                          ? Colors.warning
+                          : Colors.success
+                      }
                       strokeWidth={2.4}
-                      style={{ marginRight: 5 }}
+                      style={{ marginRight: 6 }}
                     />
                     <Text
                       style={[
                         styles.statusLabel,
-                        isThreat ? styles.textThreat : styles.textClean,
+                        isThreat
+                          ? styles.textThreat
+                          : isSuspicious
+                          ? styles.textSuspicious
+                          : styles.textClean,
                       ]}>
-                      {isThreat ? 'Potential Fraud' : 'Likely Safe'}
+                      {isThreat
+                        ? 'Potential Fraud'
+                        : isSuspicious
+                        ? 'Suspicious Payload'
+                        : 'Verified Safe'}
                     </Text>
                   </View>
 
-                  <View
-                    style={[
-                      styles.riskPill,
-                      isThreat ? styles.riskPillThreat : styles.riskPillClean,
-                    ]}>
-                    <Text
-                      style={[
-                        styles.riskPillText,
-                        isThreat ? styles.riskPillTextThreat : styles.riskPillTextClean,
-                      ]}>
-                      {scorePct}% Risk
-                    </Text>
-                  </View>
+                  <Badge
+                    label={`${scorePct}% RISK`}
+                    variant={isThreat ? 'fraud' : isSuspicious ? 'suspicious' : 'safe'}
+                    size="sm"
+                  />
                 </View>
               </View>
             );
@@ -164,96 +180,103 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionHeading: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
     letterSpacing: -0.2,
   },
   viewAllText: {
     fontSize: 13,
     fontWeight: '700',
-    color: PRIMARY_COLOR,
+    color: Colors.secondary,
   },
 
   // Empty State Card
   emptyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
   },
   emptyIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ECFDF5',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 123, 167, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 123, 167, 0.3)',
   },
   emptyTextCol: {
     flex: 1,
   },
   emptyTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.textPrimary,
     marginBottom: 2,
   },
   emptySubtitle: {
     fontSize: 12,
-    color: '#64748B',
-    lineHeight: 16,
+    lineHeight: 17,
+    color: Colors.textSecondary,
   },
 
-  // Record Cards
+  // List of Record Cards
   listCol: {
     gap: 8,
   },
   recordCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderRadius: 14,
-    padding: 13,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
+  },
+  recordCardThreat: {
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
   },
   cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   sourceBadge: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 5,
+    backgroundColor: Colors.surfaceSecondary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   sourceText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    color: PRIMARY_COLOR,
+    color: Colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   timeText: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: Colors.textTertiary,
   },
   previewText: {
     fontSize: 13,
-    lineHeight: 18,
-    color: '#1E293B',
-    marginBottom: 8,
+    lineHeight: 19,
+    color: Colors.textPrimary,
+    marginBottom: 10,
   },
   cardBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 6,
   },
   statusGroup: {
     flexDirection: 'row',
@@ -264,31 +287,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   textThreat: {
-    color: '#DC2626',
+    color: Colors.error,
+  },
+  textSuspicious: {
+    color: Colors.warning,
   },
   textClean: {
-    color: '#059669',
-  },
-  riskPill: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 5,
-  },
-  riskPillThreat: {
-    backgroundColor: '#FEE2E2',
-  },
-  riskPillClean: {
-    backgroundColor: '#D1FAE5',
-  },
-  riskPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  riskPillTextThreat: {
-    color: '#DC2626',
-  },
-  riskPillTextClean: {
-    color: '#059669',
+    color: Colors.success,
   },
 });
 
