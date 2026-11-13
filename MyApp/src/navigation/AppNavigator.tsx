@@ -18,6 +18,7 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import AssistantChatScreen from '../screens/assistant/AssistantChatScreen';
 import NetworkAnalysisScreen from '../screens/network/NetworkAnalysisScreen';
+import PermissionSecurityScreen from '../screens/permissions/PermissionSecurityScreen';
 import { Colors, Typography, Spacing, Shadows } from '../theme/theme';
 import Icon, { IconName } from '../components/Icon';
 
@@ -30,6 +31,10 @@ export interface AssistantChatParams {
     riskScore?: number;
     reasons?: string[];
     safePreview?: string;
+    permissionType?: string;
+    domain?: string;
+    trustLevel?: string;
+    browser?: string;
   };
   initialPrompt?: string;
 }
@@ -39,11 +44,21 @@ export type HomeStackParamList = {
   MessageChecker?: { initialMode?: 'paste' | 'upload' };
   DetectionHistory: undefined;
   Profile: undefined;
+<<<<<<< HEAD
   Settings: undefined;
   EditProfile: undefined;
   ChangePassword: undefined;
+=======
+  EditProfile: undefined;
+>>>>>>> 40ea39155414d266e314a4000b0b094467982313
   AssistantChat?: AssistantChatParams;
   NetworkAnalysis?: undefined;
+  PermissionSecurity: undefined;
+};
+
+export type ProfileStackParamList = {
+  Profile: undefined;
+  EditProfile: undefined;
 };
 
 export type CheckStackParamList = {
@@ -63,8 +78,12 @@ export type HistoryStackParamList = {
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditProfile: undefined;
+<<<<<<< HEAD
   Settings: undefined;
   ChangePassword: undefined;
+=======
+  PermissionSecurity: undefined;
+>>>>>>> 40ea39155414d266e314a4000b0b094467982313
 };
 
 export type SettingsStackParamList = ProfileStackParamList;
@@ -131,6 +150,7 @@ const HomeStackScreen: React.FC = () => (
       options={{ title: 'My Profile', headerBackTitle: 'Home' }}
     />
     <HomeStack.Screen
+<<<<<<< HEAD
       name="Settings"
       component={SettingsScreen}
       options={{ headerShown: false }}
@@ -144,6 +164,11 @@ const HomeStackScreen: React.FC = () => (
       name="ChangePassword"
       component={ChangePasswordScreen}
       options={{ headerShown: false }}
+=======
+      name="EditProfile"
+      component={EditProfileScreen}
+      options={{ title: 'Edit Profile', headerBackTitle: 'Profile' }}
+>>>>>>> 40ea39155414d266e314a4000b0b094467982313
     />
     <HomeStack.Screen
       name="AssistantChat"
@@ -154,6 +179,11 @@ const HomeStackScreen: React.FC = () => (
       name="NetworkAnalysis"
       component={NetworkAnalysisScreen}
       options={{ title: 'Transaction Network Analysis', headerBackTitle: 'Home' }}
+    />
+    <HomeStack.Screen
+      name="PermissionSecurity"
+      component={PermissionSecurityScreen}
+      options={{ headerShown: false }}
     />
   </HomeStack.Navigator>
 );
@@ -231,12 +261,21 @@ const ProfileStackScreen: React.FC = () => (
       component={EditProfileScreen}
       options={{ title: 'Edit Profile', headerBackTitle: 'Profile' }}
     />
+<<<<<<< HEAD
     <ProfileStack.Screen
       name="ChangePassword"
       component={ChangePasswordScreen}
       options={{ headerShown: false }}
     />
   </ProfileStack.Navigator>
+=======
+    <SettingsStack.Screen
+      name="PermissionSecurity"
+      component={PermissionSecurityScreen}
+      options={{ headerShown: false }}
+    />
+  </SettingsStack.Navigator>
+>>>>>>> 40ea39155414d266e314a4000b0b094467982313
 );
 
 // ─── Bottom Tab Navigator (5 Tabs) ──────────────────────────────────────────

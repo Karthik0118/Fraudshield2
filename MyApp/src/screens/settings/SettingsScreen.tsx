@@ -144,8 +144,26 @@ const SettingsScreen: React.FC = () => {
       ],
     },
     {
+<<<<<<< HEAD
       title: 'Security & Threat Defense',
       iconName: 'Shield',
+=======
+      title: 'Security & Web Protection',
+      items: [
+        {
+          id: 'permission_security',
+          icon: 'Shield',
+          iconBg: '#ECFDF5',
+          iconColor: '#059669',
+          label: 'Website Permissions',
+          description: 'Camera, mic & location protection for Chrome',
+          onPress: () => navigation.navigate('PermissionSecurity'),
+        },
+      ],
+    },
+    {
+      title: 'Developer Options (Fraud Cache)',
+>>>>>>> 40ea39155414d266e314a4000b0b094467982313
       items: [
         {
           id: 'realtime_defense',
