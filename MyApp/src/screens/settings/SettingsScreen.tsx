@@ -144,11 +144,7 @@ const SettingsScreen: React.FC = () => {
       ],
     },
     {
-<<<<<<< HEAD
-      title: 'Security & Threat Defense',
-      iconName: 'Shield',
-=======
-      title: 'Security & Web Protection',
+title: 'Security & Web Protection',
       items: [
         {
           id: 'permission_security',
@@ -162,8 +158,7 @@ const SettingsScreen: React.FC = () => {
       ],
     },
     {
-      title: 'Developer Options (Fraud Cache)',
->>>>>>> 40ea39155414d266e314a4000b0b094467982313
+      title: 'Security & Threat Defense',
       items: [
         {
           id: 'realtime_defense',

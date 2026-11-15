@@ -401,11 +401,7 @@ function generateGuidedRecovery(userMessage) {
   ) {
     return {
       response:
-<<<<<<< HEAD
-        "Clicking a link by itself does not automatically mean your phone or bank account is compromised. Let's triage what happened:\n\n" +
-=======
         "Clicking a link by itself does not automatically compromise your phone or bank account, provided you did not share credentials or install software. Let's triage what happened:\n\n" +
->>>>>>> 40ea39155414d266e314a4000b0b094467982313
         "• Did you enter any usernames, passwords, card numbers, or OTPs on the webpage?\n" +
         "• Did a file or application automatically download or ask to be installed?\n" +
         "• Did you approve any screen-sharing or accessibility permissions?\n\n" +
@@ -786,15 +782,9 @@ async function processAssistantChat({
       conversationId: activeConversationId,
       mode: activeMode,
       response:
-<<<<<<< HEAD
-        "⚠️ Security Warning: Never send your real OTP, PIN, or password in any chat — not even to FraudShield. " +
-        "It appears you may have typed an actual security credential. " +
-        "Please delete this message immediately and change your credentials if they were shared with anyone.",
-=======
         "⚠️ Security Warning: Never send your real OTP, PIN, or password! " +
         "Please NEVER share real one-time passwords or security codes in any chat. " +
         "FraudShield will never ask for your private credentials.",
->>>>>>> 40ea39155414d266e314a4000b0b094467982313
       suggestedFollowUps: [
         "What should I do if I shared my OTP with someone?",
         "How can I report this incident?",

@@ -93,13 +93,9 @@ export const AssistantChatScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
   const [activeSuggestions, setActiveSuggestions] = useState<string[]>(
-<<<<<<< HEAD
-    mode === 'detection_explanation'
-=======
     detectionContext?.permissionType
       ? DEFAULT_PERMISSION_SUGGESTIONS
       : mode === 'detection_explanation'
->>>>>>> 40ea39155414d266e314a4000b0b094467982313
       ? DEFAULT_DETECTION_SUGGESTIONS
       : DEFAULT_GENERAL_SUGGESTIONS,
   );
@@ -112,9 +108,6 @@ export const AssistantChatScreen: React.FC = () => {
   useEffect(() => {
     let initialGreetingText = '';
 
-<<<<<<< HEAD
-    if (mode === 'detection_explanation' && detectionContext) {
-=======
     if (detectionContext?.permissionType) {
       initialGreetingText = `Hello! I'm your FraudShield Assistant. I see that ${
         detectionContext.domain || 'a website'
@@ -123,7 +116,6 @@ export const AssistantChatScreen: React.FC = () => {
       }). Ask me about the risks, whether to allow or deny, or how to manage site permissions safely in Chrome and Android.`;
     } else if (mode === 'detection_explanation' && detectionContext) {
       const isThreat = detectionContext.classification === 'FRAUD' || (detectionContext.riskScore || 0) >= 0.70;
->>>>>>> 40ea39155414d266e314a4000b0b094467982313
       const scorePct = Math.round((detectionContext.riskScore || 0) * 100);
       initialGreetingText = `Hello! I'm your FraudShield AI Assistant. I have evaluated this detection (${scorePct}% threat confidence). Ask me why this message was flagged, what suspicious indicators were found, or how to protect yourself.`;
     } else {
@@ -405,13 +397,8 @@ export const AssistantChatScreen: React.FC = () => {
         </View>
       </View>
 
-<<<<<<< HEAD
-      {/* ─── Detection Context Banner (if present) ──────────────────── */}
-      {mode === 'detection_explanation' && detectionContext && (
-=======
       {/* ─── Detection / Permission Context Banner ─────────────────────── */}
       {detectionContext && (
->>>>>>> 40ea39155414d266e314a4000b0b094467982313
         <View style={styles.detectionBanner}>
           <TouchableOpacity
             style={styles.detectionBannerHeader}
@@ -420,18 +407,6 @@ export const AssistantChatScreen: React.FC = () => {
             <View style={styles.detectionBannerTitleRow}>
               <Icon
                 name={
-<<<<<<< HEAD
-                  (detectionContext.riskScore || 0) >= 0.70
-                    ? 'AlertTriangle'
-                    : 'CheckCircle2'
-                }
-                size={15}
-                color={
-                  (detectionContext.riskScore || 0) >= 0.70
-                    ? Colors.error
-                    : Colors.success
-                }
-=======
                   detectionContext.permissionType
                     ? 'Lock'
                     : (detectionContext.riskScore || 0) >= 0.70
@@ -446,18 +421,13 @@ export const AssistantChatScreen: React.FC = () => {
                     ? '#DC2626'
                     : '#059669'
                 }
->>>>>>> 40ea39155414d266e314a4000b0b094467982313
                 strokeWidth={2.4}
                 style={{ marginRight: 6 }}
               />
               <Text style={styles.detectionBannerTitle}>
-<<<<<<< HEAD
-                Referenced Context ({detectionContext.source || 'Manual Scan'})
-=======
                 {detectionContext.permissionType
                   ? `Website Permission: ${detectionContext.permissionType}`
                   : `Referenced Detection (${detectionContext.source || 'Manual Scan'})`}
->>>>>>> 40ea39155414d266e314a4000b0b094467982313
               </Text>
             </View>
 
